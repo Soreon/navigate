@@ -1,19 +1,28 @@
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
 
-const canvasWidth = 2000;
-const canvasHeight = 2000;
+const canvasWidth = 1000;
+const canvasHeight = 1000;
+canvas.width = canvasWidth;
+canvas.height = canvasHeight;
 
 const tileSize = 16;
-
-const gridWidth = 125;
-const gridHeight = 125;
-const grid = new Uint8Array(gridWidth * gridHeight);
-
-const nbTilesInWidth = 94;
-const nbTilesInHeight = 157;
+const tilesetWidth = 94;
+const tilesetHeight = 157;
 const tileset = new Image(1504, 2519);
 tileset.src = 'tileset.png';
+
+const characterTileSize = 24;
+const characterTilesetWidth = 11;
+const characterTilesetHeight = 6;
+const characterTileset = new Image(401, 234);
+characterTileset.src = 'character.png';
+characterX = 10;
+characterY = 10;
+
+const gridWidth = (canvasWidth / tileSize) | 0;
+const gridHeight = (canvasHeight/ tileSize) | 0; 
+const grid = new Uint8Array(gridWidth * gridHeight);
 
 function weightedRandom(prob) {
     let i, sum = 0, tot = 0, r = Math.random();
@@ -52,7 +61,7 @@ function populateGrid() {
 }
 
 function getTileCoordinates(i) {
-    return { x: i % nbTilesInWidth, y: i / nbTilesInWidth | 0 }; 
+    return { x: i % tilesetWidth, y: i / tilesetWidth | 0 }; 
 }
 
 function getGridIndex(x, y) {
@@ -65,12 +74,39 @@ function drawGrid() {
             let gridIndex = getGridIndex(j, i);
             let gridValue = grid[gridIndex];
             let tileCoordinates = getTileCoordinates(gridValue);
-            context.drawImage(tileset, tileCoordinates.x * tileSize, tileCoordinates.y * tileSize, tileSize, tileSize, i * tileSize, j * tileSize, tileSize, tileSize);
+            let xInTileset = tileCoordinates.x * tileSize;
+            let yInTileset = tileCoordinates.y * tileSize;
+            let xOnMap = j * tileSize;
+            let yOnMap = i * tileSize;
+            context.drawImage(tileset, xInTileset, yInTileset, tileSize, tileSize, xOnMap, yOnMap, tileSize, tileSize);
         }
     }
 }
 
-tileset.onload = () => {
-    populateGrid();
+function drawCharacter() {
+    let tileCoordinates = getTileCoordinates(0);
+    let xInTileset = tileCoordinates.x * characterTileSize;
+    let yInTileset = tileCoordinates.y * characterTileSize;
+    let offset =  (characterTileSize + tileSize) / 2;
+    let xOnMap = (characterX * tileSize) - offset;
+    let yOnMap = (characterY * tileSize) - offset - offset;
+    context.drawImage(characterTileset, xInTileset, yInTileset, characterTileSize, characterTileSize, xOnMap, yOnMap, characterTileSize, characterTileSize);
+}
+
+function clear() {
+    context.clearRect(0, 0, canvasWidth, canvasHeight);
+}
+
+function draw() {
     drawGrid();
-};
+    drawCharacter();
+}
+
+function animate() {
+    clear();
+    draw();
+    requestAnimationFrame(animate);
+}
+
+populateGrid();
+animate();
