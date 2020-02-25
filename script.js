@@ -6,6 +6,8 @@ const DOWN = 0;
 const LEFT = 1;
 const UP = 2;
 const RIGHT = 3;
+const WALK_SEQUENCE = [1, 3, 5, 3];
+const RUN_SEQUENCE = [2, 3, 4, 3];
 
 const canvasWidth = 1000;
 const canvasHeight = 1000;
@@ -26,10 +28,20 @@ characterTileset.src = 'character.png';
 characterX = 10;
 characterY = 10;
 characterFacing = DOWN;
+isRunning = false;
+isWalking = false;
+isMoving = false;
 
 const gridWidth = (canvasWidth / tileSize) | 0;
-const gridHeight = (canvasHeight/ tileSize) | 0; 
+const gridHeight = (canvasHeight / tileSize) | 0;
 const grid = new Uint8Array(gridWidth * gridHeight);
+
+let keyPressed = {
+    up: false,
+    right: false,
+    down: false,
+    left: false,
+}
 
 function weightedRandom(prob) {
     let i, sum = 0, tot = 0, r = Math.random();
@@ -44,7 +56,7 @@ function populateGrid() {
     for (let i = 0; i < gridHeight; i += 1) {
         for (let j = 0; j < gridWidth; j += 1) {
             let index = getGridIndex(j, i);
-            grid[index] = weightedRandom({ 
+            grid[index] = weightedRandom({
                 1: 300,
                 2: 300,
                 3: 100,
@@ -61,14 +73,14 @@ function populateGrid() {
                 102: 4,
                 103: 4,
                 104: 4,
-                105: 4 
+                105: 4
             });
         }
     }
 }
 
 function getTileCoordinates(i) {
-    return { x: i % tilesetWidth, y: i / tilesetWidth | 0 }; 
+    return { x: i % tilesetWidth, y: i / tilesetWidth | 0 };
 }
 
 function getGridIndex(x, y) {
@@ -94,7 +106,7 @@ function drawCharacter() {
     let tileCoordinates = getTileCoordinates(characterFacing);
     let xInTileset = tileCoordinates.x * characterTileSize;
     let yInTileset = tileCoordinates.y * characterTileSize;
-    let offset =  (characterTileSize + tileSize) / 2;
+    let offset = (characterTileSize + tileSize) / 2;
     let xOnMap = (characterX * tileSize) - offset;
     let yOnMap = (characterY * tileSize) - offset - offset;
     context.drawImage(characterTileset, xInTileset, yInTileset, characterTileSize, characterTileSize, xOnMap, yOnMap, characterTileSize, characterTileSize);
@@ -112,8 +124,66 @@ function draw() {
 function animate() {
     clear();
     draw();
+    if (isMoving) stepForward();
     requestAnimationFrame(animate);
 }
+
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function stepForward() {
+    const t = 100;
+    setTimeout(() => {
+        switch (characterFacing) {
+            case LEFT:
+                characterX -= 0.5;
+                break;
+            case UP:
+                characterY -= 0.5;
+                break;
+            case RIGHT:
+                characterX += 0.5;
+                break;
+            case DOWN:
+                characterY += 0.5;
+                break;
+        }
+        isMoving = false;
+    }, 100);
+}
+
+document.addEventListener('keydown', async (e) => {
+    isMoving = true;
+    isRunning = e.shiftKey;
+    switch (e.keyCode) {
+        case 37:
+            characterFacing = LEFT;
+            keyPressed.left = true;
+            break;
+        case 38:
+            characterFacing = UP;
+            keyPressed.up = true;
+            break;
+        case 39:
+            characterFacing = RIGHT;
+            keyPressed.right = true;
+            break;
+        case 40:
+            characterFacing = DOWN;
+            keyPressed.down = true;
+            break;
+    }
+});
+
+document.addEventListener('keyup', async (e) => {
+    switch (e.keyCode) {
+        case 37: keyPressed.left = false; break;
+        case 38: keyPressed.up = false; break;
+        case 39: keyPressed.right = false; break;
+        case 40: keyPressed.down = false; break;
+    }
+});
 
 populateGrid();
 animate();
