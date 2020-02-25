@@ -1,6 +1,12 @@
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
 
+// Orientation
+const DOWN = 0;
+const LEFT = 1;
+const UP = 2;
+const RIGHT = 3;
+
 const canvasWidth = 1000;
 const canvasHeight = 1000;
 canvas.width = canvasWidth;
@@ -19,6 +25,7 @@ const characterTileset = new Image(401, 234);
 characterTileset.src = 'character.png';
 characterX = 10;
 characterY = 10;
+characterFacing = DOWN;
 
 const gridWidth = (canvasWidth / tileSize) | 0;
 const gridHeight = (canvasHeight/ tileSize) | 0; 
@@ -84,7 +91,7 @@ function drawGrid() {
 }
 
 function drawCharacter() {
-    let tileCoordinates = getTileCoordinates(0);
+    let tileCoordinates = getTileCoordinates(characterFacing);
     let xInTileset = tileCoordinates.x * characterTileSize;
     let yInTileset = tileCoordinates.y * characterTileSize;
     let offset =  (characterTileSize + tileSize) / 2;
