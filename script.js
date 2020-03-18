@@ -6,7 +6,7 @@ const DOWN = 0;
 const LEFT = 1;
 const UP = 2;
 const RIGHT = 3;
-const WALK_SEQUENCE = [1, 3, 5, 3];
+const WALK_SEQUENCE = [1, 0, 5, 0];
 const RUN_SEQUENCE = [2, 3, 4, 3];
 
 const canvasWidth = 1000;
@@ -25,23 +25,20 @@ const characterTilesetWidth = 11;
 const characterTilesetHeight = 6;
 const characterTileset = new Image(401, 234);
 characterTileset.src = 'character.png';
-characterX = 10;
-characterY = 10;
-characterFacing = DOWN;
-isRunning = false;
-isWalking = false;
-isMoving = false;
+
+let characterX = 10;
+let characterY = 10;
+let characterFacing = DOWN;
+let isRunning = false;
+let isWalking = false;
+let isMoving = false;
+let sequenceStep = 0;
 
 const gridWidth = (canvasWidth / tileSize) | 0;
 const gridHeight = (canvasHeight / tileSize) | 0;
 const grid = new Uint8Array(gridWidth * gridHeight);
 
-let keyPressed = {
-    up: false,
-    right: false,
-    down: false,
-    left: false,
-}
+let keyPressed = [];
 
 function weightedRandom(prob) {
     let i, sum = 0, tot = 0, r = Math.random();
@@ -105,11 +102,47 @@ function drawGrid() {
 function drawCharacter() {
     let tileCoordinates = getTileCoordinates(characterFacing);
     let xInTileset = tileCoordinates.x * characterTileSize;
-    let yInTileset = tileCoordinates.y * characterTileSize;
+    let yInTileset = (tileCoordinates.y + sequenceStep) * characterTileSize;
     let offset = (characterTileSize + tileSize) / 2;
     let xOnMap = (characterX * tileSize) - offset;
     let yOnMap = (characterY * tileSize) - offset - offset;
     context.drawImage(characterTileset, xInTileset, yInTileset, characterTileSize, characterTileSize, xOnMap, yOnMap, characterTileSize, characterTileSize);
+}
+
+
+function moveCharater() {
+    isRunning = keyPressed[16];
+    isMoving = false;
+
+    if(keyPressed[37]) {
+        characterFacing = LEFT;
+        isMoving = true;
+    }
+    if(keyPressed[38]) {
+        characterFacing = UP;
+        isMoving = true;
+    }
+    if(keyPressed[39]) {
+        characterFacing = RIGHT;
+        isMoving = true;
+    }
+    if(keyPressed[40]) {
+        characterFacing = DOWN;
+        isMoving = true;
+    }
+}
+
+function animateCharacter() {
+    if (isMoving) {
+        const tn = (new Date()).getTime();
+        const speed = isRunning ? 120 : 150;
+        const Δt = Math.floor(tn / speed);
+        const sequence = isRunning ? RUN_SEQUENCE : WALK_SEQUENCE;
+        const sequenceIndex = Δt % sequence.length;
+        sequenceStep = sequence[sequenceIndex];
+    } else {
+        sequenceStep = 0;
+    }
 }
 
 function clear() {
@@ -123,67 +156,15 @@ function draw() {
 
 function animate() {
     clear();
+    moveCharater();
+    animateCharacter();
     draw();
-    if (isMoving) stepForward();
     requestAnimationFrame(animate);
 }
 
-function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
 
-async function stepForward() {
-    const t = 100;
-    setTimeout(() => {
-        switch (characterFacing) {
-            case LEFT:
-                characterX -= 0.5;
-                break;
-            case UP:
-                characterY -= 0.5;
-                break;
-            case RIGHT:
-                characterX += 0.5;
-                break;
-            case DOWN:
-                characterY += 0.5;
-                break;
-        }
-        isMoving = false;
-    }, 100);
-}
-
-document.addEventListener('keydown', async (e) => {
-    isMoving = true;
-    isRunning = e.shiftKey;
-    switch (e.keyCode) {
-        case 37:
-            characterFacing = LEFT;
-            keyPressed.left = true;
-            break;
-        case 38:
-            characterFacing = UP;
-            keyPressed.up = true;
-            break;
-        case 39:
-            characterFacing = RIGHT;
-            keyPressed.right = true;
-            break;
-        case 40:
-            characterFacing = DOWN;
-            keyPressed.down = true;
-            break;
-    }
-});
-
-document.addEventListener('keyup', async (e) => {
-    switch (e.keyCode) {
-        case 37: keyPressed.left = false; break;
-        case 38: keyPressed.up = false; break;
-        case 39: keyPressed.right = false; break;
-        case 40: keyPressed.down = false; break;
-    }
-});
+document.addEventListener('keydown', (e) => { keyPressed[e.keyCode] = true; });
+document.addEventListener('keyup', (e) => { keyPressed[e.keyCode] = false; });
 
 populateGrid();
 animate();
