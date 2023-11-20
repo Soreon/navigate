@@ -1,9 +1,10 @@
-import { TileSet } from './TileSet.js';
+import { TileSet } from '../class/TileSet.js';
 import {
-  DOWN, LEFT, RIGHT, UP, WALK_SEQUENCE, RUN_SEQUENCE, CELL_SIZE,
-} from './constants.js';
+  DOWN, LEFT, RIGHT, UP, WALK_SEQUENCE, RUN_SEQUENCE, CELL_SIZE, DEBUG,
+} from '../constants.js';
 
-const MOVE_DURATION = 250;
+const WALK_DURATION = 250;
+const RUN_DURATION = 100;
 const X_OFFSET = 7;
 const Y_OFFSET = 5;
 
@@ -14,68 +15,99 @@ export default class Character {
     this.moveOffsetX = 0;
     this.moveOffsetY = 0;
     this.facing = DOWN;
+    this.shouldFace = DOWN;
     this.isRunning = false;
     this.isWalking = false;
     this.isMoving = false;
     this.sequenceStep = 0;
+    this.isEndingMoveCycle = false;
     this.tileset = new TileSet('../image/character.png', 401, 234, 24, 6, 11);
   }
 
+  // Determine the direction the character should face when the arrow keys are pressed
   determineOrientation(keyPressed) {
     const {
       ArrowUp, ArrowRight, ArrowDown, ArrowLeft,
     } = keyPressed;
 
-    if (ArrowUp && !ArrowRight && !ArrowDown && !ArrowLeft && this.facing !== UP) {
+    // If no arrow key is pressed, the character should face the direction it was facing before
+    // If more than one arrow key is pressed, the character should face the direction of the last pressed arrow key
+    const sum = !!ArrowUp + !!ArrowRight + !!ArrowDown + !!ArrowLeft;
+    if (sum === 0 || sum > 1) return;
+
+    if (ArrowUp && this.moveOffsetX === 0) {
       this.facing = UP;
-    } else if (ArrowRight && !ArrowUp && !ArrowDown && !ArrowLeft && this.facing !== RIGHT) {
+    } else if (ArrowRight && this.moveOffsetY === 0) {
       this.facing = RIGHT;
-    } else if (ArrowDown && !ArrowUp && !ArrowRight && !ArrowLeft && this.facing !== DOWN) {
+    } else if (ArrowDown && this.moveOffsetX === 0) {
       this.facing = DOWN;
-    } else if (ArrowLeft && !ArrowUp && !ArrowRight && !ArrowDown && this.facing !== LEFT) {
+    } else if (ArrowLeft && this.moveOffsetY === 0) {
       this.facing = LEFT;
+    }
+
+    if (ArrowUp) {
+      this.shouldFace = UP;
+    } else if (ArrowRight) {
+      this.shouldFace = RIGHT;
+    } else if (ArrowDown) {
+      this.shouldFace = DOWN;
+    } else if (ArrowLeft) {
+      this.shouldFace = LEFT;
     }
   }
 
   moveWhenKeyIsPressed(keyPressed, Δx, Δy) {
-    const { Shift } = keyPressed;
-
     this.isMoving = true;
-    this.isRunning = Shift;
 
     this.determineOrientation(keyPressed);
 
     switch (this.facing) {
       case UP:
-        if (this.moveOffsetX !== 0) break;
+        if (this.moveOffsetX !== 0) {
+          this.moveXUntilBeingOnGrid(Δx);
+          break;
+        }
         this.moveOffsetY -= Δy;
         if (this.moveOffsetY < -CELL_SIZE) {
           this.y -= 1;
           this.moveOffsetY += CELL_SIZE;
+          this.facing = this.shouldFace;
         }
         break;
       case RIGHT:
-        if (this.moveOffsetY !== 0) break;
+        if (this.moveOffsetY !== 0) {
+          this.moveYUntilBeingOnGrid(Δy);
+          break;
+        }
         this.moveOffsetX += Δx;
         if (this.moveOffsetX > CELL_SIZE) {
           this.x += 1;
           this.moveOffsetX -= CELL_SIZE;
+          this.facing = this.shouldFace;
         }
         break;
       case DOWN:
-        if (this.moveOffsetX !== 0) break;
+        if (this.moveOffsetX !== 0) {
+          this.moveXUntilBeingOnGrid(Δx);
+          break;
+        }
         this.moveOffsetY += Δy;
         if (this.moveOffsetY > CELL_SIZE) {
           this.y += 1;
           this.moveOffsetY -= CELL_SIZE;
+          this.facing = this.shouldFace;
         }
         break;
       case LEFT:
-        if (this.moveOffsetY !== 0) break;
+        if (this.moveOffsetY !== 0) {
+          this.moveYUntilBeingOnGrid(Δy);
+          break;
+        }
         this.moveOffsetX -= Δx;
         if (this.moveOffsetX < -CELL_SIZE) {
           this.x -= 1;
           this.moveOffsetX += CELL_SIZE;
+          this.facing = this.shouldFace;
         }
         break;
       default: break;
@@ -93,6 +125,7 @@ export default class Character {
       } else {
         this.moveOffsetX = 0;
         this.isMoving = false;
+        this.facing = this.shouldFace;
       }
     } else {
       this.moveOffsetX = 0;
@@ -102,6 +135,7 @@ export default class Character {
       } else if (this.facing === LEFT) {
         this.x -= 1;
       }
+      this.facing = this.shouldFace;
     }
   }
 
@@ -116,6 +150,7 @@ export default class Character {
       } else {
         this.moveOffsetY = 0;
         this.isMoving = false;
+        this.facing = this.shouldFace;
       }
     } else {
       this.moveOffsetY = 0;
@@ -125,6 +160,7 @@ export default class Character {
       } else if (this.facing === UP) {
         this.y -= 1;
       }
+      this.facing = this.shouldFace;
     }
   }
 
@@ -135,17 +171,19 @@ export default class Character {
 
   move(keyPressed) {
     const {
-      ArrowUp, ArrowRight, ArrowDown, ArrowLeft,
+      ArrowUp, ArrowRight, ArrowDown, ArrowLeft, Shift,
     } = keyPressed;
 
+    this.isRunning = Shift;
     this.arrowKeyPressed = ArrowUp || ArrowRight || ArrowDown || ArrowLeft;
 
     const { now, lastFrameTime } = window;
 
     // Calculate the distance the character should move based on the time elapsed since the last frame
     const Δt = now - lastFrameTime;
-    const Δx = (CELL_SIZE / MOVE_DURATION) * Δt;
-    const Δy = (CELL_SIZE / MOVE_DURATION) * Δt;
+    const duration = this.isRunning ? RUN_DURATION : WALK_DURATION;
+    const Δx = (CELL_SIZE / duration) * Δt;
+    const Δy = (CELL_SIZE / duration) * Δt;
 
     if (this.arrowKeyPressed) {
       this.moveWhenKeyIsPressed(keyPressed, Δx, Δy);
@@ -162,7 +200,7 @@ export default class Character {
 
     const sequence = this.isRunning ? RUN_SEQUENCE : WALK_SEQUENCE;
 
-    const frameDuration  = this.isRunning ? 120 : 150;
+    const frameDuration = this.isRunning ? 120 : 150;
     const { now } = window;
     const Δt = Math.round(now / frameDuration);
     const sequenceIndex = Δt % sequence.length;
@@ -193,5 +231,18 @@ export default class Character {
       this.tileset.tileSize,  // The width of the character's sprite on the canvas
       this.tileset.tileSize,  // The height of the character's sprite on the canvas
     );
+
+    // Draw the character's bouding box on the canvas
+    if (DEBUG) {
+      context.strokeStyle = 'red';
+      context.translate(-0.5, -0.5);
+      context.strokeRect(
+        xOnMap,
+        yOnMap,
+        this.tileset.tileSize,
+        this.tileset.tileSize,
+      );
+      context.translate(0.5, 0.5);
+    }
   }
 }

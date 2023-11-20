@@ -1,7 +1,7 @@
-import { TileSet } from './TileSet.js';
-import { DEBUG, GRASS_TILETYPE_WEIGHTS } from './constants.js';
+import { TileSet } from '../class/TileSet.js';
+import { DEBUG, GRASS_TILETYPE_WEIGHTS } from '../constants.js';
 
-export default class TileMap {
+export default class Map {
   constructor(canvas, ranugen) {
     this.ranugen = ranugen;
     this.canvas = canvas;
