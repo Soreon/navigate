@@ -9,7 +9,7 @@ const X_OFFSET = 7;
 const Y_OFFSET = 5;
 
 export default class Character {
-  constructor(x, y) {
+  constructor(x, y, tileset) {
     this.x = x;
     this.y = y;
     this.moveOffsetX = 0;
@@ -21,7 +21,7 @@ export default class Character {
     this.isMoving = false;
     this.sequenceStep = 0;
     this.isEndingMoveCycle = false;
-    this.tileset = new TileSet('../image/character.png', 401, 234, 24, 6, 11);
+    this.tileset = tileset;
   }
 
   update(commands, Δt) {

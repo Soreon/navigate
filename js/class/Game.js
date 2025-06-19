@@ -4,6 +4,7 @@ import Character from './Character.js';
 import InputManager from './InputManager.js';
 import { RandomNumberGenerator } from './RandomNumberGenerator.js';
 import Map from './Map.js';
+import { TileSet } from './TileSet.js';
 import { CELL_SIZE, DEBUG, SEED } from '../constants.js';
 
 // La classe Game est maintenant définie dans son propre module.
@@ -27,12 +28,16 @@ export default class Game {
     this.lastFrameTime = 0;
     this.inputManager = new InputManager();
 
-    // 4. Création des instances principales du jeu
+    // 4. Chargement des tilesets
+    const characterTileset = new TileSet('../image/character.png', 401, 234, 24, 6, 11);
+    const mapTileset = new TileSet('../image/tileset.png', 1504, 2519, 16, 157, 94);
+
+    // 5. Création des instances principales du jeu
     this.ranugen = new RandomNumberGenerator(SEED);
-    this.map = new Map(this.canvas, this.ranugen);
+    this.map = new Map(this.canvas, this.ranugen, mapTileset);
     const startX = Math.floor(this.gridSize / 2);
     const startY = Math.floor(this.gridSize / 2);
-    this.character = new Character(startX, startY);
+    this.character = new Character(startX, startY, characterTileset);
   }
 
   start() {

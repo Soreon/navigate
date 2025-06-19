@@ -2,10 +2,10 @@ import { TileSet } from '../class/TileSet.js';
 import { DEBUG, GRASS_TILETYPE_WEIGHTS } from '../constants.js';
 
 export default class Map {
-  constructor(canvas, ranugen) {
+  constructor(canvas, ranugen, tileset) {
     this.ranugen = ranugen;
     this.canvas = canvas;
-    this.tileset = new TileSet('../image/tileset.png', 1504, 2519, 16, 157, 94);
+    this.tileset = tileset;
     this.gridWidth = Math.ceil(canvas.width / this.tileset.tileSize);
     this.gridHeight = Math.ceil(canvas.height / this.tileset.tileSize);
     this.grid = new Uint8Array(this.gridWidth * this.gridHeight);
