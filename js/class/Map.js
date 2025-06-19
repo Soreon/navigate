@@ -2,12 +2,12 @@ import { TileSet } from '../class/TileSet.js';
 import { DEBUG, GRASS_TILETYPE_WEIGHTS, NON_WALKABLE_TILES  } from '../constants.js';
 
 export default class Map {
-  constructor(canvas, ranugen, tileset) {
+  constructor(widthInTiles, heightInTiles, canvas, ranugen, tileset) {
     this.ranugen = ranugen;
     this.canvas = canvas;
     this.tileset = tileset;
-    this.gridWidth = Math.ceil(canvas.width / this.tileset.tileSize);
-    this.gridHeight = Math.ceil(canvas.height / this.tileset.tileSize);
+    this.gridWidth = widthInTiles;
+    this.gridHeight = heightInTiles;
     this.grid = new Uint8Array(this.gridWidth * this.gridHeight);
   }
 
@@ -33,23 +33,32 @@ export default class Map {
   }
 
   drawTileBoundaries(context) {
-    // Draw a grid with lines to show the tile boundaries
+    // Calculer la taille totale de la carte en pixels
+    const mapPixelWidth = this.gridWidth * this.tileset.tileSize;
+    const mapPixelHeight = this.gridHeight * this.tileset.tileSize;
+
     context.strokeStyle = 'black';
     context.lineWidth = 1;
-    // offset the grid by half a pixel to avoid anti-aliasing
+    // décaler la grille d'un demi-pixel pour éviter l'anti-aliasing
     context.translate(-0.5, -0.5);
-    for (let i = 0; i < this.gridHeight; i += 1) {
+
+    // Dessiner les lignes horizontales sur toute la largeur de la carte
+    // Note : On utilise <= pour dessiner aussi la toute dernière ligne
+    for (let i = 0; i <= this.gridHeight; i += 1) {
       context.beginPath();
       context.moveTo(0, i * this.tileset.tileSize);
-      context.lineTo(this.canvas.width, i * this.tileset.tileSize);
+      context.lineTo(mapPixelWidth, i * this.tileset.tileSize);
       context.stroke();
     }
-    for (let j = 0; j < this.gridWidth; j += 1) {
+
+    // Dessiner les lignes verticales sur toute la hauteur de la carte
+    for (let j = 0; j <= this.gridWidth; j += 1) {
       context.beginPath();
       context.moveTo(j * this.tileset.tileSize, 0);
-      context.lineTo(j * this.tileset.tileSize, this.canvas.height);
+      context.lineTo(j * this.tileset.tileSize, mapPixelHeight);
       context.stroke();
     }
+    
     context.translate(0.5, 0.5);
   }
 
