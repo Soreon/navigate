@@ -169,7 +169,7 @@ export default class Character {
     this.moveYUntilBeingOnGrid(Δy);
   }
 
-  move(keyPressed) {
+  move(keyPressed, Δt) {
     const {
       ArrowUp, ArrowRight, ArrowDown, ArrowLeft, Shift,
     } = keyPressed;
@@ -177,10 +177,6 @@ export default class Character {
     this.isRunning = Shift;
     this.arrowKeyPressed = ArrowUp || ArrowRight || ArrowDown || ArrowLeft;
 
-    const { now, lastFrameTime } = window;
-
-    // Calculate the distance the character should move based on the time elapsed since the last frame
-    const Δt = now - lastFrameTime;
     const duration = this.isRunning ? RUN_DURATION : WALK_DURATION;
     const Δx = (CELL_SIZE / duration) * Δt;
     const Δy = (CELL_SIZE / duration) * Δt;
@@ -192,7 +188,7 @@ export default class Character {
     }
   }
 
-  animate() {
+  animate(now) {
     if (!this.isMoving) {
       this.sequenceStep = 0;
       return;
@@ -201,7 +197,7 @@ export default class Character {
     const sequence = this.isRunning ? RUN_SEQUENCE : WALK_SEQUENCE;
 
     const frameDuration = this.isRunning ? 120 : 150;
-    const { now } = window;
+
     const Δt = Math.round(now / frameDuration);
     const sequenceIndex = Δt % sequence.length;
     this.sequenceStep = sequence[sequenceIndex];
