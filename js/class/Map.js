@@ -1,5 +1,5 @@
 import { TileSet } from '../class/TileSet.js';
-import { DEBUG, GRASS_TILETYPE_WEIGHTS } from '../constants.js';
+import { DEBUG, GRASS_TILETYPE_WEIGHTS, NON_WALKABLE_TILES  } from '../constants.js';
 
 export default class Map {
   constructor(canvas, ranugen, tileset) {
@@ -9,6 +9,14 @@ export default class Map {
     this.gridWidth = Math.ceil(canvas.width / this.tileset.tileSize);
     this.gridHeight = Math.ceil(canvas.height / this.tileset.tileSize);
     this.grid = new Uint8Array(this.gridWidth * this.gridHeight);
+  }
+
+  isWalkable(x, y) {
+    if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) {
+      return false;
+    }
+    const tileId = this.grid[this.getGridIndex(x, y)];
+    return !NON_WALKABLE_TILES.has(tileId);
   }
 
   populateGrid() {

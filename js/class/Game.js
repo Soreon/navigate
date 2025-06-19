@@ -37,7 +37,7 @@ export default class Game {
     this.map = new Map(this.canvas, this.ranugen, mapTileset);
     const startX = Math.floor(this.gridSize / 2);
     const startY = Math.floor(this.gridSize / 2);
-    this.character = new Character(startX, startY, characterTileset);
+    this.character = new Character(startX, startY, characterTileset, this.map);
   }
 
   start() {

@@ -26,4 +26,6 @@ export const GRASS_TILETYPE_WEIGHTS = {
   104: 4,
   105: 4,
 };
+export const NON_WALKABLE_TILES = new Set([
+]);
 export const DEBUG = true;

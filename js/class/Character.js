@@ -9,7 +9,7 @@ const X_OFFSET = 7;
 const Y_OFFSET = 5;
 
 export default class Character {
-  constructor(x, y, tileset) {
+  constructor(x, y, tileset, map) {
     this.x = x;
     this.y = y;
     this.moveOffsetX = 0;
@@ -22,6 +22,7 @@ export default class Character {
     this.sequenceStep = 0;
     this.isEndingMoveCycle = false;
     this.tileset = tileset;
+    this.map = map;
   }
 
   update(commands, Δt) {
@@ -39,7 +40,10 @@ export default class Character {
       if (commands.move) {
         // ...mais qu'une touche est pressée, on commence un nouveau mouvement.
         this.facing = this.shouldFace;
-        this.isMoving = true;
+        const { targetX, targetY } = this.getTargetPosition();
+        if (this.map.isWalkable(targetX, targetY)) {
+          this.isMoving = true;
+        }
       }
     } else {
       // Si on est déjà en mouvement entre deux cases, on continue.
@@ -86,6 +90,18 @@ export default class Character {
   getDirectionFromString(string) {
     const dirMap = { UP, DOWN, LEFT, RIGHT };
     return dirMap[string];
+  }
+
+  getTargetPosition() {
+    let targetX = this.x;
+    let targetY = this.y;
+    switch (this.facing) {
+      case UP: targetY--; break;
+      case DOWN: targetY++; break;
+      case LEFT: targetX--; break;
+      case RIGHT: targetX++; break;
+    }
+    return { targetX, targetY };
   }
 
   animate(now) {
