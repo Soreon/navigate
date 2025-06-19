@@ -24,168 +24,68 @@ export default class Character {
     this.tileset = new TileSet('../image/character.png', 401, 234, 24, 6, 11);
   }
 
-  // Determine the direction the character should face when the arrow keys are pressed
-  determineOrientation(keyPressed) {
-    const {
-      ArrowUp, ArrowRight, ArrowDown, ArrowLeft,
-    } = keyPressed;
+  update(commands, Δt) {
+    this.isRunning = commands.isRunning;
 
-    // If no arrow key is pressed, the character should face the direction it was facing before
-    // If more than one arrow key is pressed, the character should face the direction of the last pressed arrow key
-    const sum = !!ArrowUp + !!ArrowRight + !!ArrowDown + !!ArrowLeft;
-    if (sum === 0 || sum > 1) return;
-
-    if (ArrowUp && this.moveOffsetX === 0) {
-      this.facing = UP;
-    } else if (ArrowRight && this.moveOffsetY === 0) {
-      this.facing = RIGHT;
-    } else if (ArrowDown && this.moveOffsetX === 0) {
-      this.facing = DOWN;
-    } else if (ArrowLeft && this.moveOffsetY === 0) {
-      this.facing = LEFT;
+    // 1. Mémoriser l'intention du joueur si une touche est pressée
+    if (commands.move) {
+      this.shouldFace = this.getDirectionFromString(commands.move);
+    }
+    
+    // 2. Décider de l'action en fonction de l'état actuel (aligné sur la grille ou non)
+    if (this.isOnGrid()) {
+      // Si on est sur une case...
+      this.isMoving = false; // On est à l'arrêt par défaut
+      if (commands.move) {
+        // ...mais qu'une touche est pressée, on commence un nouveau mouvement.
+        this.facing = this.shouldFace;
+        this.isMoving = true;
+      }
+    } else {
+      // Si on est déjà en mouvement entre deux cases, on continue.
+      this.isMoving = true;
     }
 
-    if (ArrowUp) {
-      this.shouldFace = UP;
-    } else if (ArrowRight) {
-      this.shouldFace = RIGHT;
-    } else if (ArrowDown) {
-      this.shouldFace = DOWN;
-    } else if (ArrowLeft) {
-      this.shouldFace = LEFT;
+    // 3. Exécuter le mouvement si nécessaire
+    if (this.isMoving) {
+      const duration = this.isRunning ? RUN_DURATION : WALK_DURATION;
+      const step = (CELL_SIZE / duration) * Δt;
+      this.moveInDirection(this.facing, step);
     }
   }
 
-  moveWhenKeyIsPressed(keyPressed, Δx, Δy) {
-    this.isMoving = true;
-
-    this.determineOrientation(keyPressed);
-
-    switch (this.facing) {
-      case UP:
-        if (this.moveOffsetX !== 0) {
-          this.moveXUntilBeingOnGrid(Δx);
-          break;
-        }
-        this.moveOffsetY -= Δy;
-        if (this.moveOffsetY < -CELL_SIZE) {
-          this.y -= 1;
-          this.moveOffsetY += CELL_SIZE;
-          this.facing = this.shouldFace;
-        }
-        break;
-      case RIGHT:
-        if (this.moveOffsetY !== 0) {
-          this.moveYUntilBeingOnGrid(Δy);
-          break;
-        }
-        this.moveOffsetX += Δx;
-        if (this.moveOffsetX > CELL_SIZE) {
-          this.x += 1;
-          this.moveOffsetX -= CELL_SIZE;
-          this.facing = this.shouldFace;
-        }
-        break;
-      case DOWN:
-        if (this.moveOffsetX !== 0) {
-          this.moveXUntilBeingOnGrid(Δx);
-          break;
-        }
-        this.moveOffsetY += Δy;
-        if (this.moveOffsetY > CELL_SIZE) {
-          this.y += 1;
-          this.moveOffsetY -= CELL_SIZE;
-          this.facing = this.shouldFace;
-        }
-        break;
-      case LEFT:
-        if (this.moveOffsetY !== 0) {
-          this.moveYUntilBeingOnGrid(Δy);
-          break;
-        }
-        this.moveOffsetX -= Δx;
-        if (this.moveOffsetX < -CELL_SIZE) {
-          this.x -= 1;
-          this.moveOffsetX += CELL_SIZE;
-          this.facing = this.shouldFace;
-        }
-        break;
+  moveInDirection(direction, step) {
+    // Bouge le personnage et déclenche la mise à jour de la grille si une case est franchie
+    switch (direction) {
+      case UP:    this.moveOffsetY -= step; break;
+      case DOWN:  this.moveOffsetY += step; break;
+      case LEFT:  this.moveOffsetX -= step; break;
+      case RIGHT: this.moveOffsetX += step; break;
       default: break;
     }
+    this.updateGridPositionAfterMove();
   }
 
-  moveXUntilBeingOnGrid(Δx) {
-    if (this.moveOffsetX === 0) return;
-
-    if (Math.abs(this.moveOffsetX) < CELL_SIZE) {
-      if (this.facing === RIGHT) {
-        this.moveOffsetX += Δx;
-      } else if (this.facing === LEFT) {
-        this.moveOffsetX -= Δx;
-      } else {
-        this.moveOffsetX = 0;
-        this.isMoving = false;
-        this.facing = this.shouldFace;
-      }
-    } else {
+  updateGridPositionAfterMove() {
+    // Vérifie si un cycle de mouvement est terminé (une case entière a été parcourue)
+    if (Math.abs(this.moveOffsetX) >= CELL_SIZE) {
+      this.x += Math.sign(this.moveOffsetX);
       this.moveOffsetX = 0;
-      this.isMoving = false;
-      if (this.facing === RIGHT) {
-        this.x += 1;
-      } else if (this.facing === LEFT) {
-        this.x -= 1;
-      }
-      this.facing = this.shouldFace;
     }
-  }
-
-  moveYUntilBeingOnGrid(Δy) {
-    if (this.moveOffsetY === 0) return;
-
-    if (Math.abs(this.moveOffsetY) < CELL_SIZE) {
-      if (this.facing === DOWN) {
-        this.moveOffsetY += Δy;
-      } else if (this.facing === UP) {
-        this.moveOffsetY -= Δy;
-      } else {
-        this.moveOffsetY = 0;
-        this.isMoving = false;
-        this.facing = this.shouldFace;
-      }
-    } else {
+    if (Math.abs(this.moveOffsetY) >= CELL_SIZE) {
+      this.y += Math.sign(this.moveOffsetY);
       this.moveOffsetY = 0;
-      this.isMoving = false;
-      if (this.facing === DOWN) {
-        this.y += 1;
-      } else if (this.facing === UP) {
-        this.y -= 1;
-      }
-      this.facing = this.shouldFace;
     }
   }
 
-  moveUntilBeingOnGrid(Δx, Δy) {
-    this.moveXUntilBeingOnGrid(Δx);
-    this.moveYUntilBeingOnGrid(Δy);
+  isOnGrid() {
+    // Le personnage est considéré "sur la grille" uniquement si ses offsets sont à zéro.
+    return this.moveOffsetX === 0 && this.moveOffsetY === 0;
   }
 
-  move(keyPressed, Δt) {
-    const {
-      ArrowUp, ArrowRight, ArrowDown, ArrowLeft, Shift,
-    } = keyPressed;
-
-    this.isRunning = Shift;
-    this.arrowKeyPressed = ArrowUp || ArrowRight || ArrowDown || ArrowLeft;
-
-    const duration = this.isRunning ? RUN_DURATION : WALK_DURATION;
-    const Δx = (CELL_SIZE / duration) * Δt;
-    const Δy = (CELL_SIZE / duration) * Δt;
-
-    if (this.arrowKeyPressed) {
-      this.moveWhenKeyIsPressed(keyPressed, Δx, Δy);
-    } else {
-      this.moveUntilBeingOnGrid(Δx, Δy);
-    }
+  getDirectionFromString(string) {
+    const dirMap = { UP, DOWN, LEFT, RIGHT };
+    return dirMap[string];
   }
 
   animate(now) {

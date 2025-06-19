@@ -1,6 +1,7 @@
 // js/class/Game.js
 
 import Character from './Character.js';
+import InputManager from './InputManager.js';
 import { RandomNumberGenerator } from './RandomNumberGenerator.js';
 import Map from './Map.js';
 import { CELL_SIZE, DEBUG, SEED } from '../constants.js';
@@ -24,7 +25,7 @@ export default class Game {
     
     // 3. Initialisation de l'état du jeu
     this.lastFrameTime = 0;
-    this.keyPressed = {};
+    this.inputManager = new InputManager();
 
     // 4. Création des instances principales du jeu
     this.ranugen = new RandomNumberGenerator(SEED);
@@ -32,9 +33,6 @@ export default class Game {
     const startX = Math.floor(this.gridSize / 2);
     const startY = Math.floor(this.gridSize / 2);
     this.character = new Character(startX, startY);
-
-    // 5. Mise en place des écouteurs d'événements
-    this._setupEventListeners();
   }
 
   start() {
@@ -47,9 +45,11 @@ export default class Game {
     const now = Date.now();
     const Δt = now - this.lastFrameTime;
 
+    const commands = this.inputManager.getCommands();
+
     this.clear();
-    
-    this.character.move(this.keyPressed, Δt);
+
+    this.character.update(commands, Δt);
     this.character.animate(now);
 
     this.draw();
@@ -67,19 +67,6 @@ export default class Game {
   
   clear() {
     this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-  }
-
-  _setupEventListeners() {
-    document.addEventListener('keydown', this._handleKeyDown.bind(this));
-    document.addEventListener('keyup', this._handleKeyUp.bind(this));
-  }
-  
-  _handleKeyDown(e) {
-    this.keyPressed[e.key] = true;
-  }
-  
-  _handleKeyUp(e) {
-    this.keyPressed[e.key] = false;
   }
   
   drawWalkingSpace() {
