@@ -133,3 +133,9 @@ body[data-tool="move"] #canvas:hover{
 #layer-list li.dragging {
     opacity: 0.5;
 }
+
+#tools button.active-tool {
+    background-color: #cce5ff; /* Un fond bleu clair */
+    border-color: #007bff;     /* Une bordure bleue plus foncée */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}

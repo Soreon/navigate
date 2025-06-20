@@ -15,9 +15,14 @@ export default class Editor {
 
     this.tilesCanvas = document.getElementById('tiles');
 
+    this.toolButtons = {
+      brush: document.querySelector('#tool'),
+      fill: document.querySelector('#fill'),
+      erase: document.querySelector('#erase'),
+    };
+
     // --- Création des instances principales ---
     const mapTileset = new TileSet('../image/tileset.png', 1504, 2519, 16, 157, 94);
-    
     this.ranugen = new RandomNumberGenerator(SEED);
     this.map = new EditorMap(100, 100, this.canvas, this.ranugen, mapTileset);
     this.tileSelector = new TileSelector(this.map.tileset, this.tilesCanvas);
@@ -31,6 +36,19 @@ export default class Editor {
     // --- Démarrage de la boucle de dessin ---
     this.animate();
     this.tileSelector.draw(); // Premier dessin du sélecteur de tuiles
+  }
+
+  setActiveToolButton(activeToolName) {
+    // On retire la classe active de tous les boutons
+    for (const toolName in this.toolButtons) {
+      if (this.toolButtons[toolName]) {
+        this.toolButtons[toolName].classList.remove('active-tool');
+      }
+    }
+    // On ajoute la classe au bouton qui vient d'être activé
+    if (this.toolButtons[activeToolName]) {
+      this.toolButtons[activeToolName].classList.add('active-tool');
+    }
   }
 
   /**
@@ -199,27 +217,27 @@ export default class Editor {
       this.camera.x = 0;
       this.camera.y = 0;
     });
-    
-    document.querySelector('#undo').addEventListener('click', () => this.map.undo());
-    document.querySelector('#redo').addEventListener('click', () => this.map.redo());
-    
+    document.querySelector('#undo').addEventListener('click', () => { this.map.undo(); this.draw(); });
+    document.querySelector('#redo').addEventListener('click', () => { this.map.redo(); this.draw(); });
     document.querySelector('#clear').addEventListener('click', () => {
       this.map.clear();
+      this.draw();
     });
 
-    document.querySelector('#tool').addEventListener('click', () => {
-      this.map.tool = 'brush';
-      document.body.dataset.tool = 'brush';
+    // On utilise la nouvelle méthode pour gérer le changement d'outil et de style
+    this.toolButtons.brush.addEventListener('click', () => {
+        this.map.tool = 'brush';
+        this.setActiveToolButton('brush');
     });
 
-    document.querySelector('#erase').addEventListener('click', () => {
-      this.map.tool = 'erase';
-      document.body.dataset.tool = 'erase';
+    this.toolButtons.erase.addEventListener('click', () => {
+        this.map.tool = 'erase';
+        this.setActiveToolButton('erase');
     });
 
-    document.querySelector('#fill').addEventListener('click', () => {
-      this.map.tool = 'fill';
-      document.body.dataset.tool = 'fill';
+    this.toolButtons.fill.addEventListener('click', () => {
+        this.map.tool = 'fill';
+        this.setActiveToolButton('fill');
     });
   }
 
