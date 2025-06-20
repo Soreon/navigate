@@ -82,14 +82,17 @@ export class TileSelector {
     });
   }
 
-  handleMouseMove(e) {
+handleMouseMove(e) {
     if (!this.isDragging) return;
+
     if (e.shiftKey) {
-      this.offsetX += e.clientX - this.dragStartX;
-      this.offsetY += e.clientY - this.dragStartY;
+      // On arrondit les offsets pour éviter les problèmes de rendu de la grille
+      this.offsetX = Math.round(this.offsetX + e.clientX - this.dragStartX);
+      this.offsetY = Math.round(this.offsetY + e.clientY - this.dragStartY);
     } else {
       this.addToSelection(this.getTileXYFromMouseEvent(e));
     }
+
     this.dragStartX = e.clientX;
     this.dragStartY = e.clientY;
     this.draw();
@@ -121,41 +124,46 @@ export class TileSelector {
   }
 
   drawSelection(context) {
-    if (!this.selection) return;
+    if (!this.selection || this.selection.length === 0) return;
 
     context.strokeStyle = 'rgba(255, 0, 0, 0.8)';
     context.lineWidth = 1;
 
-    const offsetX = this.offsetX / this.zoom;
-    const offsetY = this.offsetY / this.zoom;
-    const tileSize = this.tileSize * this.zoom;
+    const scaledTileSize = this.tileSize * this.zoom;
 
     this.selection.forEach((tile) => {
-      const x = tile.x * tileSize;
-      const y = tile.y * tileSize;
+      // On calcule la position de base de la tuile, en tenant compte du zoom ET du décalage
+      const x = (tile.x * scaledTileSize) + this.offsetX;
+      const y = (tile.y * scaledTileSize) + this.offsetY;
 
+      // La logique suivante dessine uniquement les BORDURES extérieures de la sélection
+
+      // Dessine le côté GAUCHE s'il n'y a pas de tuile sélectionnée à gauche
       if (!this.selection.find((el) => el.x === tile.x - 1 && el.y === tile.y)) {
         context.beginPath();
-        context.moveTo(x + offsetX, y + offsetY);
-        context.lineTo(x + offsetX, y + tileSize + offsetY);
+        context.moveTo(x, y);
+        context.lineTo(x, y + scaledTileSize);
         context.stroke();
       }
+      // Dessine le côté DROIT s'il n'y a pas de tuile sélectionnée à droite
       if (!this.selection.find((el) => el.x === tile.x + 1 && el.y === tile.y)) {
         context.beginPath();
-        context.moveTo(x + tileSize + offsetX, y + offsetY);
-        context.lineTo(x + tileSize + offsetX, y + tileSize + offsetY);
+        context.moveTo(x + scaledTileSize, y);
+        context.lineTo(x + scaledTileSize, y + scaledTileSize);
         context.stroke();
       }
+      // Dessine le côté HAUT s'il n'y a pas de tuile sélectionnée au-dessus
       if (!this.selection.find((el) => el.x === tile.x && el.y === tile.y - 1)) {
         context.beginPath();
-        context.moveTo(x + offsetX, y + offsetY);
-        context.lineTo(x + tileSize + offsetX, y + offsetY);
+        context.moveTo(x, y);
+        context.lineTo(x + scaledTileSize, y);
         context.stroke();
       }
+      // Dessine le côté BAS s'il n'y a pas de tuile sélectionnée en dessous
       if (!this.selection.find((el) => el.x === tile.x && el.y === tile.y + 1)) {
         context.beginPath();
-        context.moveTo(x + offsetX, y + tileSize + offsetY);
-        context.lineTo(x + tileSize + offsetX, y + tileSize + offsetY);
+        context.moveTo(x, y + scaledTileSize);
+        context.lineTo(x + scaledTileSize, y + scaledTileSize);
         context.stroke();
       }
     });
