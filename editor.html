@@ -1,14 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navigate Editor</title>
-    <link rel="stylesheet" href="./css/style.css">
+    <title>Navigate editor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="./css/editor.css">
+    <script src="js/init.js"></script>
 </head>
-<body>
-    <canvas id="canvas" width="1000" height="1000"></canvas>
-    <div id="debug-panel"></div>
+<body data-tool="brush">
+
+    <div id="left-panel">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="right-panel">
+      <div id="layer-panel">
+        <h3>Layers</h3>
+        <ul id="layer-list">
+          </ul>
+        <button id="add-layer">+ Add Layer</button>
+      </div>
+      <div id="tools">
+        <button id="home"><i class="fa-solid fa-home"></i></button>
+        <button id="save"><i class="fa-solid fa-download"></i></button>
+        <button id="load"><i class="fa-solid fa-upload"></i></button>
+        <button id="clear"><i class="fa-solid fa-trash"></i></button>
+        <button id="undo"><i class="fa-solid fa-rotate-left"></i></button>
+        <button id="redo"><i class="fa-solid fa-rotate-right"></i></button>
+        <button id="tool"><i class="fa-solid fa-paintbrush"></i></button>
+        <button id="erase"><i class="fa-solid fa-eraser"></i></button>
+      </div>
+      <canvas id="tile-preview"></canvas>
+      <canvas id="tiles"></canvas>
+    </div>
+
     <script type="module" src="js/editor.js"></script>
 </body>
 </html>

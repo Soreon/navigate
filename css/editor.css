@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  box-sizing: border-box;
+}
+
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+body {
+  padding: 1em;
+}
+
+body[data-tool="move"] #canvas:hover{
+  cursor: move;
+}
+
+*:not(canvas) {
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
+
+#canvas {
+  image-rendering: pixelated;
+}
+
+#tiles {
+  image-rendering: pixelated;
+  border: solid 1px #dadada;
+}
+
+#tile-preview {
+  image-rendering: pixelated;
+  border: solid 1px #dadada;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+  background-color: white;
+}
+
+#left-panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  aspect-ratio: 1 / 1; /* Permet à cette colonne de prendre l'espace restant */
+  overflow: hidden; /* Empêche le canvas de déborder lors du déplacement */
+  border: solid 1px #dadada;
+}
+
+#right-panel {
+  display: flex;
+  flex-direction: column; /* Organise les outils verticalement */
+  flex-shrink: 0; /* Empêche cette colonne de rétrécir */
+  width: 350px; /* Largeur fixe pour la colonne d'outils */
+  padding: 10px;
+  box-sizing: border-box;
+  background-color: #f0f0f0;
+}
+
+#tools {
+  display: flex;
+  flex-wrap: wrap; /* Les boutons passent à la ligne si pas assez de place */
+  gap: 5px; /* Espace entre les boutons */
+  margin-bottom: 15px; /* Marge sous la barre d'outils */
+}
+
+#tools button {
+  font-size: 1.2em;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+#tools button:hover {
+  background-color: #e9e9e9;
+}
+
+#layer-panel {
+    margin-bottom: 20px;
+}
+#layer-panel h3 {
+    margin: 0 0 10px 0;
+}
+#layer-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px 0;
+    border: 1px solid #ccc;
+    background-color: #fff;
+}
+#layer-list li {
+    display: flex; /* Permet d'aligner la poignée et le nom */
+    align-items: center;
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+#layer-list li:last-child {
+    border-bottom: none;
+}
+#layer-list li:hover {
+    background-color: #e6f2ff;
+}
+#layer-list li.active {
+    background-color: #cce5ff;
+    font-weight: bold;
+}
+#add-layer {
+    width: 100%;
+    padding: 8px;
+    cursor: pointer;
+}
+.drag-handle {
+    margin-right: 10px;
+    cursor: grab;
+    color: #aaa;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Style pour l'élément pendant qu'il est déplacé */
+#layer-list li.dragging {
+    opacity: 0.5;
+}

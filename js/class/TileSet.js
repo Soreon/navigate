@@ -9,6 +9,10 @@ export class TileSet {
       this.rows = rows;
       this.columns = columns;
     }
+
+    getTileIndex(x, y) {
+      return (y * this.columns) + x;
+    }
   
     getTileCoordinates(tileIndex) {
       const column = tileIndex % this.columns;

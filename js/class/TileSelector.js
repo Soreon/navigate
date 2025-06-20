@@ -1,0 +1,197 @@
+import { loadImage } from '../utils.js';
+
+export class TileSelector {
+  constructor(tileset, canvas) {
+    this.tileset = tileset;
+    this.canvas = canvas;
+    this.tileSize = 16;
+    this.selection = [];
+    this.zoom = 1;
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+    this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+    this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    this.canvas.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
+  }
+
+  getTileXYFromMouseEvent(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const rX = e.clientX - rect.left;
+    const rY = e.clientY - rect.top;
+
+    const x = Math.floor((rX - this.offsetX) / (this.tileSize * this.zoom));
+    const y = Math.floor((rY - this.offsetY) / (this.tileSize * this.zoom));
+
+    return { x, y };
+  }
+
+  addToSelection(element) {
+    if (this.selection.some((el) => el.x === element.x && el.y === element.y)) return;
+    this.selection.push(element);
+    this.previewSelectedTiles();
+  }
+
+  handleWheel(e) {
+    if (e.deltaY > 0) {
+      this.zoom -= 1;
+    } else {
+      this.zoom += 1;
+    }
+    if (this.zoom < 1) {
+      this.zoom = 1;
+    }
+    this.draw();
+  }
+
+  handleMouseDown(e) {
+    this.isDragging = true;
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.selection = [];
+    this.addToSelection(this.getTileXYFromMouseEvent(e));
+    this.draw();
+  }
+
+  handleMouseLeave(e) {
+    this.handleMouseUp(e);
+  }
+
+  previewSelectedTiles() {
+    const previewCanvas = document.getElementById('tile-preview');
+    const previewContext = previewCanvas.getContext('2d');
+    previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+    previewCanvas.width = Math.min(this.selection.length * 32, 16 * 32);
+    previewCanvas.height = 32 * Math.ceil((32 * this.selection.length) / 528);
+    previewContext.imageSmoothingEnabled = false;
+    previewCanvas.style.width = `${previewCanvas.width}px`;
+    previewCanvas.style.height = `${previewCanvas.height}px`;
+    this.selection.forEach((tile, index) => {
+      previewContext.drawImage(
+        this.tileset.image,
+        tile.x * this.tileSize,
+        tile.y * this.tileSize,
+        this.tileSize,
+        this.tileSize,
+        32 * (index % 16),
+        32 * Math.floor(index / 16),
+        32,
+        32,
+      );
+    });
+  }
+
+  handleMouseMove(e) {
+    if (!this.isDragging) return;
+    if (e.shiftKey) {
+      this.offsetX += e.clientX - this.dragStartX;
+      this.offsetY += e.clientY - this.dragStartY;
+    } else {
+      this.addToSelection(this.getTileXYFromMouseEvent(e));
+    }
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.draw();
+  }
+
+  handleMouseUp() {
+    this.isDragging = false;
+    this.draw();
+  }
+
+  drawGrid(context) {
+    context.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    context.lineWidth = 1;
+
+    for (let i = 0; i <= this.tileset.rows; i += 1) {
+      context.beginPath();
+      const y = (i * this.tileSize * this.zoom) + this.offsetY;
+      context.moveTo(this.offsetX, y);
+      context.lineTo(this.tileset.image.width * this.zoom + this.offsetX, y);
+      context.stroke();
+    }
+    for (let j = 0; j <= this.tileset.columns; j += 1) {
+      context.beginPath();
+      const x = (j * this.tileSize * this.zoom) + this.offsetX;
+      context.moveTo(x, this.offsetY);
+      context.lineTo(x, this.tileset.image.height * this.zoom + this.offsetY);
+      context.stroke();
+    }
+  }
+
+  drawSelection(context) {
+    if (!this.selection) return;
+
+    context.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+    context.lineWidth = 1;
+
+    const offsetX = this.offsetX / this.zoom;
+    const offsetY = this.offsetY / this.zoom;
+    const tileSize = this.tileSize * this.zoom;
+
+    this.selection.forEach((tile) => {
+      const x = tile.x * tileSize;
+      const y = tile.y * tileSize;
+
+      if (!this.selection.find((el) => el.x === tile.x - 1 && el.y === tile.y)) {
+        context.beginPath();
+        context.moveTo(x + offsetX, y + offsetY);
+        context.lineTo(x + offsetX, y + tileSize + offsetY);
+        context.stroke();
+      }
+      if (!this.selection.find((el) => el.x === tile.x + 1 && el.y === tile.y)) {
+        context.beginPath();
+        context.moveTo(x + tileSize + offsetX, y + offsetY);
+        context.lineTo(x + tileSize + offsetX, y + tileSize + offsetY);
+        context.stroke();
+      }
+      if (!this.selection.find((el) => el.x === tile.x && el.y === tile.y - 1)) {
+        context.beginPath();
+        context.moveTo(x + offsetX, y + offsetY);
+        context.lineTo(x + tileSize + offsetX, y + offsetY);
+        context.stroke();
+      }
+      if (!this.selection.find((el) => el.x === tile.x && el.y === tile.y + 1)) {
+        context.beginPath();
+        context.moveTo(x + offsetX, y + tileSize + offsetY);
+        context.lineTo(x + tileSize + offsetX, y + tileSize + offsetY);
+        context.stroke();
+      }
+    });
+  }
+
+  async draw(context = this.canvas.getContext('2d')) {
+    this.canvas.width = this.canvas.clientWidth;
+
+    // Nous devons également nous assurer que la hauteur du canevas est suffisante pour tout le tileset.
+    // La hauteur dépendra du zoom appliqué à l'image du tileset.
+    const tilesetImage = this.tileset.image;
+    // Attendre que l'image soit chargée pour connaître sa hauteur
+    await loadImage(tilesetImage);
+    this.canvas.height = tilesetImage.height * this.zoom;
+
+    // Le redimensionnement du canevas réinitialise son contexte, on le ré-applique ici.
+    context = this.canvas.getContext('2d');
+    context.imageSmoothingEnabled = false; // Important pour garder le pixel art net
+
+    context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Dessine l'image du tileset avec le zoom et le décalage (pan)
+    context.drawImage(
+        tilesetImage,
+        this.offsetX,
+        this.offsetY,
+        tilesetImage.width * this.zoom,
+        tilesetImage.height * this.zoom
+    );
+
+    context.translate(-0.5, -0.5);
+    // dessine un rectangle rouge autour de la tuile sélectionnée
+    this.drawSelection(context);
+
+    // dessine une grille sur le tileset
+    this.drawGrid(context);
+    context.translate(0.5, 0.5);
+  }
+}
