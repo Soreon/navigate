@@ -164,34 +164,34 @@ export default class Editor {
       e.preventDefault();
     });
 
-layerList.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const draggingElement = layerList.querySelector('.dragging');
-        if (!draggingElement) return;
+    layerList.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const draggingElement = layerList.querySelector('.dragging');
+      if (!draggingElement) return;
 
-        const dropTarget = e.target.closest('li');
-        if (dropTarget && dropTarget !== draggingElement) {
-            const dropIndex = parseInt(dropTarget.dataset.index, 10);
+      const dropTarget = e.target.closest('li');
+      if (dropTarget && dropTarget !== draggingElement) {
+          const dropIndex = parseInt(dropTarget.dataset.index, 10);
 
-            // On ne peut pas déposer sur le calque Background
-            if (dropIndex !== 0) {
-                // IMPORTANT : On garde le nom du calque déplacé pour retrouver son nouvel index
-                const draggedLayerName = this.map.layers[dragStartIndex].name;
-                
-                // 1. On réorganise les données
-                this.map.reorderLayer(dragStartIndex, dropIndex);
+          // On ne peut pas déposer sur le calque Background
+          if (dropIndex !== 0) {
+              // IMPORTANT : On garde le nom du calque déplacé pour retrouver son nouvel index
+              const draggedLayerName = this.map.layers[dragStartIndex].name;
+              
+              // 1. On réorganise les données
+              this.map.reorderLayer(dragStartIndex, dropIndex);
 
-                // 2. On retrouve le nouvel index du calque qu'on vient de déplacer
-                const newActiveIndex = this.map.layers.findIndex(layer => layer.name === draggedLayerName);
-                this.map.setActiveLayer(newActiveIndex);
-                
-                // 3. On sauvegarde et on met à jour les vues
-                this.map.save();
-                this.renderLayerList();
-                this.draw(); // Redessin immédiat du canevas
-            }
-        }
-        draggingElement.classList.remove('dragging');
+              // 2. On retrouve le nouvel index du calque qu'on vient de déplacer
+              const newActiveIndex = this.map.layers.findIndex(layer => layer.name === draggedLayerName);
+              this.map.setActiveLayer(newActiveIndex);
+              
+              // 3. On sauvegarde et on met à jour les vues
+              this.map.save();
+              this.renderLayerList();
+              this.draw(); // Redessin immédiat du canevas
+          }
+      }
+      draggingElement.classList.remove('dragging');
     });
 
     // --- Événements des boutons de la barre d'outils ---
@@ -215,6 +215,11 @@ layerList.addEventListener('drop', (e) => {
     document.querySelector('#erase').addEventListener('click', () => {
       this.map.tool = 'erase';
       document.body.dataset.tool = 'erase';
+    });
+
+    document.querySelector('#fill').addEventListener('click', () => {
+      this.map.tool = 'fill';
+      document.body.dataset.tool = 'fill';
     });
   }
 

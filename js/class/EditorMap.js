@@ -204,15 +204,80 @@ export class EditorMap {
     }
   }
 
+  getTile(x, y) {
+    const layer = this.layers[this.activeLayerIndex];
+    if (!layer) return undefined;
+    return layer.tiles[`x${x},y${y}`];
+  }
+
+  fill(startX, startY, newTileIndex, camera) {
+    const targetTileIndex = this.getTile(startX, startY);
+
+    if (targetTileIndex === newTileIndex) return;
+
+    // --- CAS 1 : Clic sur une zone vide ---
+    if (targetTileIndex === undefined) {
+      // On remplit toutes les cases VIDES de la zone VISIBLE
+      const { tileSize } = this.tileset;
+      const viewWidth = this.canvas.width;
+      const viewHeight = this.canvas.height;
+
+      // On calcule les limites de la grille visible à l'écran
+      const startGridX = Math.floor(camera.x / tileSize);
+      const endGridX = startGridX + Math.ceil(viewWidth / tileSize);
+      const startGridY = Math.floor(camera.y / tileSize);
+      const endGridY = startGridY + Math.ceil(viewHeight / tileSize);
+
+      // On parcourt chaque case de la zone visible
+      for (let j = startGridX; j <= endGridX; j++) {
+        for (let i = startGridY; i <= endGridY; i++) {
+          // On ne remplit que si la case est effectivement vide
+          if (this.getTile(j, i) === undefined) {
+            this.setTile(j, i, newTileIndex);
+          }
+        }
+      }
+    } 
+    // --- CAS 2 : Clic sur une tuile existante (Flood Fill) ---
+    else {
+      const queue = [[startX, startY]];
+      const visited = new Set([`x${startX},y${startY}`]);
+
+      while (queue.length > 0) {
+        const [x, y] = queue.shift();
+        this.setTile(x, y, newTileIndex);
+
+        const neighbors = [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]];
+        for (const [nx, ny] of neighbors) {
+          const neighborKey = `x${nx},y${ny}`;
+          if (!visited.has(neighborKey)) {
+            visited.add(neighborKey);
+            const neighborTile = this.getTile(nx, ny);
+            if (neighborTile === targetTileIndex) {
+              queue.push([nx, ny]);
+            }
+          }
+        }
+      }
+    }
+  }
+
   useTool(mouseX, mouseY, tileIndex, camera) {
     const { x, y } = this.getGridCoordinates(mouseX, mouseY, camera);
 
-    if (this.tool === 'brush') {
-      this.brush(x, y, tileIndex);
-    } else if (this.tool === 'fill') {
-      console.log('Fill tool not implemented yet in this version');
-    } else if (this.tool === 'erase') {
-      this.removeTile(x, y); // Modifié pour ne plus passer le nom du calque
+    switch (this.tool) {
+      case 'brush':
+        if (tileIndex !== null) this.brush(x, y, tileIndex);
+        break;
+      case 'erase':
+        this.removeTile(x, y);
+        break;
+      case 'fill':
+        // Pour le remplissage, une tuile doit être sélectionnée
+        if (tileIndex !== null) this.fill(x, y, tileIndex, camera);
+        break;
+      default:
+        break;
     }
   }
   
