@@ -74,26 +74,25 @@ body[data-tool="move"] #canvas:hover{
   background-color: #f7f7f7;
 }
 
-#layer-panel, #tools {
+#layer-panel, .tools {
     flex-shrink: 0;
 }
 
-#tools {
+.tools {
   display: flex;
   flex-wrap: wrap; /* Les boutons passent à la ligne si pas assez de place */
   gap: 5px; /* Espace entre les boutons */
   margin-bottom: 15px; /* Marge sous la barre d'outils */
 }
 
-#tools button {
-  font-size: 1.2em;
-  padding: 8px 12px;
+.tools button {
+  padding: 4px 6px;
   border: 1px solid #ccc;
   background-color: #fff;
   cursor: pointer;
 }
 
-#tools button:hover {
+.tools button:hover {
   background-color: #e9e9e9;
 }
 
@@ -147,7 +146,7 @@ body[data-tool="move"] #canvas:hover{
     opacity: 0.5;
 }
 
-#tools button.active-tool {
+.tools button.active-tool {
     background-color: #cce5ff; /* Un fond bleu clair */
     border-color: #007bff;     /* Une bordure bleue plus foncée */
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
