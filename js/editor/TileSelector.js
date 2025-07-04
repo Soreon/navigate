@@ -170,14 +170,18 @@ handleMouseMove(e) {
   }
 
   async draw(context = this.canvas.getContext('2d')) {
-    // Nous devons également nous assurer que la hauteur du canevas est suffisante pour tout le tileset.
-    // La hauteur dépendra du zoom appliqué à l'image du tileset.
     const tilesetImage = this.tileset.image;
-    // Attendre que l'image soit chargée pour connaître sa hauteur
     await loadImage(tilesetImage);
-    
-    this.canvas.width = tilesetImage.width * this.zoom;
-    this.canvas.height = tilesetImage.height * this.zoom;
+
+    // Ajuste la taille du canvas pour remplir son conteneur parent.
+    // Cela évite que le canvas ne grandisse indéfiniment et ne casse la mise en page.
+    const parent = this.canvas.parentElement;
+    if (this.canvas.width !== parent.clientWidth) {
+      this.canvas.width = parent.clientWidth;
+    }
+    if (this.canvas.height !== parent.clientHeight) {
+      this.canvas.height = parent.clientHeight;
+    }
 
     // Le redimensionnement du canevas réinitialise son contexte, on le ré-applique ici.
     context = this.canvas.getContext('2d');

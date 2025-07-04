@@ -52,6 +52,8 @@ body[data-tool="move"] #canvas:hover{
   aspect-ratio: 1 / 1; /* Permet à cette colonne de prendre l'espace restant */
   overflow: hidden; /* Empêche le canvas de déborder lors du déplacement */
   border: solid 1px #dadada;
+  min-width: 800px; /* Largeur minimale pour le panneau gauche */
+  min-height: 800px; /* Hauteur minimale pour le panneau gauche */
 }
 
 #right-panel {

@@ -9,8 +9,8 @@ export default class Editor {
     // --- Initialisation des canvas ---
     this.canvas = document.getElementById('canvas');
     this.context = this.canvas.getContext('2d');
-    this.canvas.width = 1000;
-    this.canvas.height = 1000;
+    this.canvas.width = 800;
+    this.canvas.height = 800;
     this.context.imageSmoothingEnabled = false;
 
     this.tilesCanvas = document.getElementById('tiles');
