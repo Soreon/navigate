@@ -28,4 +28,3 @@ export class RandomNumberGenerator {
       return 0;
     }
   }
-  

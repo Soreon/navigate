@@ -1,8 +1,8 @@
 import { EditorMap } from './EditorMap.js';
-import { TileSet } from './TileSet.js';
+import { TileSet } from '../common/TileSet.js';
 import { TileSelector } from './TileSelector.js';
-import { RandomNumberGenerator } from './RandomNumberGenerator.js';
-import { SEED } from '../constants.js';
+import { RandomNumberGenerator } from '../common/RandomNumberGenerator.js';
+import { SEED } from '../common/constants.js';
 
 export default class Editor {
   constructor() {
@@ -22,7 +22,7 @@ export default class Editor {
     };
 
     // --- Création des instances principales ---
-    const mapTileset = new TileSet('../image/tileset.png', 1504, 2519, 16, 157, 94);
+    const mapTileset = new TileSet('../../image/tileset.png', 1504, 2519, 16, 157, 94);
     this.ranugen = new RandomNumberGenerator(SEED);
     this.map = new EditorMap(100, 100, this.canvas, this.ranugen, mapTileset);
     this.tileSelector = new TileSelector(this.map.tileset, this.tilesCanvas);
@@ -155,11 +155,17 @@ export default class Editor {
     const layerList = document.getElementById('layer-list');
 
     layerList.addEventListener('click', (e) => {
+      // On annule tout minuteur précédent au cas où l'utilisateur clique rapidement plusieurs fois
+      clearTimeout(this.clickTimer);
+
       const li = e.target.closest('li');
       if (li) {
-        const index = parseInt(li.dataset.index, 10);
-        this.map.setActiveLayer(index);
-        this.renderLayerList();
+        // On lance un minuteur. L'action ne sera exécutée qu'après 250ms
+        this.clickTimer = setTimeout(() => {
+          const index = parseInt(li.dataset.index, 10);
+          this.map.setActiveLayer(index);
+          this.renderLayerList();
+        }, 250); // Un délai de 200-300ms est standard
       }
     });
     
@@ -210,6 +216,59 @@ export default class Editor {
           }
       }
       draggingElement.classList.remove('dragging');
+    });
+
+    layerList.addEventListener('dblclick', (e) => {
+      clearTimeout(this.clickTimer);
+
+      // 1. On trouve d'abord l'item de la liste sur lequel on a cliqué
+      const li = e.target.closest('li');
+      if (!li || li.dataset.index === '0') return; // Si pas de li, ou si c'est le Background, on sort
+
+      // 2. ENSUITE, on cherche le span À L'INTÉRIEUR de cet item
+      const span = li.querySelector('span');
+      if (!span) return; // Si pas de span dans ce li, on sort
+
+      // --- À partir d'ici, le code est sûr de s'exécuter ---
+
+      const index = parseInt(li.dataset.index, 10);
+      const originalName = span.textContent;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = originalName;
+
+      span.replaceWith(input);
+      input.focus();
+      input.select();
+
+      // --- Logique améliorée pour éviter les bugs de sauvegarde/annulation ---
+
+      const finalize = (event) => {
+        // On retire immédiatement les écouteurs pour éviter les appels en double
+        input.removeEventListener('blur', finalize);
+        document.removeEventListener('keydown', keydownHandler);
+
+        // On sauvegarde seulement si on valide avec Entrée ou si on clique ailleurs (blur)
+        if (event.type === 'blur' || (event.type === 'keydown' && event.key === 'Enter')) {
+          const newName = input.value.trim();
+          if (newName && newName !== originalName) {
+            this.map.renameLayer(index, newName);
+            this.map.save();
+          }
+        }
+        // Si la touche est 'Escape', on ne fait rien, la liste est juste redessinée ci-dessous
+
+        this.renderLayerList();
+      };
+
+      const keydownHandler = (e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          finalize(e);
+        }
+      };
+
+      input.addEventListener('blur', finalize);
+      document.addEventListener('keydown', keydownHandler);
     });
 
     // --- Événements des boutons de la barre d'outils ---

@@ -1,5 +1,5 @@
-import { TileSet } from '../class/TileSet.js';
-import { DEBUG, GRASS_TILETYPE_WEIGHTS, NON_WALKABLE_TILES  } from '../constants.js';
+import { TileSet } from '../common/TileSet.js';
+import { DEBUG, GRASS_TILETYPE_WEIGHTS, NON_WALKABLE_TILES  } from '../common/constants.js';
 
 export default class Map {
   constructor(widthInTiles, heightInTiles, canvas, ranugen, tileset) {

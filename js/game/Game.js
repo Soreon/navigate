@@ -1,11 +1,9 @@
-// js/class/Game.js
-
 import Character from './Character.js';
-import InputManager from './InputManager.js';
-import { RandomNumberGenerator } from './RandomNumberGenerator.js';
+import InputManager from '../common/InputManager.js';
+import { RandomNumberGenerator } from '../common/RandomNumberGenerator.js';
 import Map from './Map.js';
-import { TileSet } from './TileSet.js';
-import { CELL_SIZE, DEBUG, SEED } from '../constants.js';
+import { TileSet } from '../common/TileSet.js';
+import { CELL_SIZE, DEBUG, SEED } from '../common/constants.js';
 
 // La classe Game est maintenant définie dans son propre module.
 export default class Game {
@@ -32,8 +30,8 @@ export default class Game {
     this.camera = { x: 0, y: 0 };
 
     // 4. Chargement des tilesets
-    const characterTileset = new TileSet('../image/character.png', 401, 234, 24, 6, 11);
-    const mapTileset = new TileSet('../image/tileset.png', 1504, 2519, 16, 157, 94);
+    const characterTileset = new TileSet('../../image/character.png', 401, 234, 24, 6, 11);
+    const mapTileset = new TileSet('../../image/tileset.png', 1504, 2519, 16, 157, 94);
 
     // 5. Création des instances principales du jeu
     this.ranugen = new RandomNumberGenerator(SEED);

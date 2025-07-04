@@ -1,7 +1,7 @@
-import { TileSet } from '../class/TileSet.js';
+import { TileSet } from '../common/TileSet.js';
 import {
   DOWN, LEFT, RIGHT, UP, WALK_SEQUENCE, RUN_SEQUENCE, CELL_SIZE, DEBUG,
-} from '../constants.js';
+} from '../common/constants.js';
 
 const WALK_DURATION = 250;
 const RUN_DURATION = 100;

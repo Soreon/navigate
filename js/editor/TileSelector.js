@@ -1,4 +1,4 @@
-import { loadImage } from '../utils.js';
+import { loadImage } from '../common/utils.js';
 
 export class TileSelector {
   constructor(tileset, canvas) {
@@ -170,13 +170,13 @@ handleMouseMove(e) {
   }
 
   async draw(context = this.canvas.getContext('2d')) {
-    this.canvas.width = this.canvas.clientWidth;
-
     // Nous devons également nous assurer que la hauteur du canevas est suffisante pour tout le tileset.
     // La hauteur dépendra du zoom appliqué à l'image du tileset.
     const tilesetImage = this.tileset.image;
     // Attendre que l'image soit chargée pour connaître sa hauteur
     await loadImage(tilesetImage);
+    
+    this.canvas.width = tilesetImage.width * this.zoom;
     this.canvas.height = tilesetImage.height * this.zoom;
 
     // Le redimensionnement du canevas réinitialise son contexte, on le ré-applique ici.

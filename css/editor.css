@@ -33,17 +33,16 @@ body[data-tool="move"] #canvas:hover{
 }
 
 #tiles {
-  image-rendering: pixelated;
-  border: solid 1px #dadada;
+  flex-grow: 1;
+  overflow-y: scroll;
+  overflow-x: scroll; /* <-- AJOUTEZ CETTE LIGNE */
+  background-color: #e9e9e9;
+  height: 100%;
 }
 
 #tile-preview {
-  image-rendering: pixelated;
-  border: solid 1px #dadada;
-  width: 32px;
-  height: 32px;
-  pointer-events: none;
-  background-color: white;
+  align-self: center;
+  max-width: 100%;
 }
 
 #left-panel {
@@ -56,13 +55,25 @@ body[data-tool="move"] #canvas:hover{
 }
 
 #right-panel {
+  display: flex; /* Active Flexbox pour créer les colonnes */
+  flex-direction: row; /* Aligne les enfants en ligne (côte à côte) */
+  height: 100vh; /* Fait en sorte que le panneau prenne toute la hauteur de la fenêtre */
+  border-left: 2px solid #ccc; /* Ajoute une séparation visuelle */
+}
+
+#editor-controls {
   display: flex;
-  flex-direction: column; /* Organise les outils verticalement */
-  flex-shrink: 0; /* Empêche cette colonne de rétrécir */
-  width: 350px; /* Largeur fixe pour la colonne d'outils */
+  flex-direction: column; /* Aligne ses propres enfants (calques, outils) en colonne */
+  width: 280px; /* Largeur fixe pour la colonne de gauche */
+  flex-shrink: 0; /* Empêche la colonne de se rétrécir */
   padding: 10px;
-  box-sizing: border-box;
-  background-color: #f0f0f0;
+  box-sizing: border-box; /* Assure que le padding ne s'ajoute pas à la largeur */
+  gap: 20px; /* Ajoute de l'espace entre les éléments */
+  background-color: #f7f7f7;
+}
+
+#layer-panel, #tools {
+    flex-shrink: 0;
 }
 
 #tools {
@@ -138,4 +149,15 @@ body[data-tool="move"] #canvas:hover{
     background-color: #cce5ff; /* Un fond bleu clair */
     border-color: #007bff;     /* Une bordure bleue plus foncée */
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#layer-list li input {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #007bff;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: bold;
+  background-color: #e6f2ff;
+  outline: none;
 }

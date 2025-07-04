@@ -1,4 +1,4 @@
-import { DEBUG } from '../constants.js';
+import { DEBUG } from '../common/constants.js';
 
 export class EditorMap {
   constructor(widthInTiles, heightInTiles, canvas, ranugen, tileset) {
@@ -85,6 +85,16 @@ export class EditorMap {
     }
   }
 
+  renameLayer(layerIndex, newName) {
+    // On ne peut pas renommer le calque Background
+    if (layerIndex === 0) return;
+
+    const layer = this.layers[layerIndex];
+    if (layer && newName.trim()) {
+      layer.name = newName.trim();
+    }
+  }
+
   // --- Méthodes de manipulation des tuiles ---
 
   setTile(x, y, tileIndex) {
@@ -112,11 +122,21 @@ export class EditorMap {
   }
 
   save() {
-    let history = JSON.parse(localStorage.getItem('history'));
-    if (!history) {
-      localStorage.setItem('history', '[]');
-      history = [];
+    let historyString = localStorage.getItem('history');
+    if (!historyString) {
+        historyString = '[]';
     }
+
+    let history;
+    try {
+        history = JSON.parse(historyString);
+        if (!Array.isArray(history)) {
+            history = [];
+        }
+    } catch (e) {
+        history = [];
+    }
+
     const data = {
       layers: this.layers,
       current: true,
@@ -133,10 +153,17 @@ export class EditorMap {
   load() {
     const savedHistory = localStorage.getItem('history');
     if (!savedHistory) return;
-    const history = JSON.parse(savedHistory);
-    const data = history.find((entry) => entry.current) || history[history.length - 1];
-    if (!data) return;
-    this.layers = data.layers;
+    try {
+        const history = JSON.parse(savedHistory);
+        if (!Array.isArray(history)) return;
+
+        const data = history.find((entry) => entry.current) || history[history.length - 1];
+        if (!data || !Array.isArray(data.layers)) return;
+        
+        this.layers = data.layers;
+    } catch (e) {
+        // If history is corrupted, we do nothing and stick to the default layers.
+    }
   }
 
   undo() {
