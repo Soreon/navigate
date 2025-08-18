@@ -190,6 +190,36 @@ export class TypeZoneManager {
   }
 
   /**
+   * Dessine uniquement les zones de type "tree"
+   * @param {CanvasRenderingContext2D} context 
+   * @param {number} tileSize 
+   * @param {number} zoom 
+   * @param {number} offsetX 
+   * @param {number} offsetY 
+   */
+  drawTreeZones(context, tileSize, zoom = 1, offsetX = 0, offsetY = 0) {
+    const scaledTileSize = tileSize * zoom;
+    
+    // Calculer les limites visibles
+    const canvasWidth = context.canvas.width;
+    const canvasHeight = context.canvas.height;
+    const visibleMinX = (-offsetX) / scaledTileSize;
+    const visibleMaxX = (canvasWidth - offsetX) / scaledTileSize;
+    const visibleMinY = (-offsetY) / scaledTileSize;
+    const visibleMaxY = (canvasHeight - offsetY) / scaledTileSize;
+
+    // Dessiner seulement les zones de type "tree" visibles
+    const treeZones = this.zones.filter(zone => zone.category === 'tree');
+    treeZones.forEach(zone => {
+      // Test de visibilité
+      if (zone.bounds.endX >= visibleMinX && zone.bounds.startX <= visibleMaxX &&
+          zone.bounds.endY >= visibleMinY && zone.bounds.startY <= visibleMaxY) {
+        this.drawZone(context, zone, tileSize, zoom, offsetX, offsetY, false);
+      }
+    });
+  }
+
+  /**
    * Dessine les zones sur le canvas tileset
    * @param {CanvasRenderingContext2D} context 
    * @param {number} tileSize 

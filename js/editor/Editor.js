@@ -21,6 +21,7 @@ export default class Editor {
       fill: document.querySelector('#fill'),
       erase: document.querySelector('#erase'),
       typeZone: document.querySelector('#type-zone-tool'),
+      tree: document.querySelector('#tree-tool'),
     };
 
     // --- Création des instances principales ---
@@ -32,9 +33,13 @@ export default class Editor {
     
     // --- Initialisation de la caméra et de l'UI ---
     this.camera = { x: 0, y: 0 };
+    this.selectedTreeZone = null;
+    this.mousePosition = { x: 0, y: 0 }; // Position de la souris sur le canvas principal
+    this.isMouseOverCanvas = false; // Pour savoir si la souris est sur le canvas
     
     this.renderLayerList(); // Premier rendu de l'interface des calques
     this.renderTypeZonePanel(); // Premier rendu du panneau des zones de type
+    this.renderTreePanel(); // Premier rendu du panneau des arbres
     this.tileSelector.setOnZoneCreatedCallback(() => this.showZoneNamingDialog());
     this._setupEventListeners();
     
@@ -82,6 +87,54 @@ export default class Editor {
     
     // Mettre à jour la liste des zones
     this.renderZoneList();
+  }
+
+  /**
+   * Met à jour l'affichage du panneau des arbres.
+   */
+  renderTreePanel() {
+    const treeList = document.getElementById('tree-list');
+    const noTreesMessage = document.getElementById('no-trees-message');
+    
+    // Récupérer les zones de type "tree"
+    const treeZones = this.typeZoneManager.getZonesByCategory('tree');
+    
+    treeList.innerHTML = '';
+    
+    if (treeZones.length === 0) {
+      treeList.style.display = 'none';
+      noTreesMessage.style.display = 'block';
+      return;
+    }
+    
+    treeList.style.display = 'block';
+    noTreesMessage.style.display = 'none';
+    
+    treeZones.forEach(zone => {
+      const li = document.createElement('li');
+      li.dataset.zoneId = zone.id;
+      
+      if (this.selectedTreeZone && this.selectedTreeZone.id === zone.id) {
+        li.classList.add('selected');
+      }
+      
+      const treeInfo = document.createElement('div');
+      treeInfo.className = 'tree-info';
+      
+      const treeName = document.createElement('div');
+      treeName.className = 'tree-name';
+      treeName.textContent = zone.name;
+      
+      const treeDetails = document.createElement('div');
+      treeDetails.className = 'tree-details';
+      treeDetails.textContent = `${zone.bounds.width}×${zone.bounds.height} tiles`;
+      
+      treeInfo.appendChild(treeName);
+      treeInfo.appendChild(treeDetails);
+      li.appendChild(treeInfo);
+      
+      treeList.appendChild(li);
+    });
   }
 
   /**
@@ -179,19 +232,27 @@ export default class Editor {
     let dragStartY = 0;
 
     const useCurrentTool = (e) => {
-      // Pour la gomme, pas besoin de tuile sélectionnée.
-      if (this.tileSelector.selection.length === 0 && this.map.tool !== 'erase') return;
-      
       const rect = this.canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       
-      const firstSelectedTile = this.tileSelector.selection[0];
-      const tileIndex = firstSelectedTile ? this.tileSelector.tileset.getTileIndex(firstSelectedTile.x, firstSelectedTile.y) : null;
-      
-      // On utilise l'outil si on a une tuile ou si l'outil est la gomme.
-      if (tileIndex !== null || this.map.tool === 'erase') {
-        this.map.useTool(mouseX, mouseY, tileIndex, this.camera);
+      if (this.map.tool === 'tree') {
+        // Mode placement d'arbres
+        if (this.selectedTreeZone) {
+          this.placeTree(mouseX, mouseY);
+        }
+      } else {
+        // Autres outils
+        // Pour la gomme, pas besoin de tuile sélectionnée.
+        if (this.tileSelector.selection.length === 0 && this.map.tool !== 'erase') return;
+        
+        const firstSelectedTile = this.tileSelector.selection[0];
+        const tileIndex = firstSelectedTile ? this.tileSelector.tileset.getTileIndex(firstSelectedTile.x, firstSelectedTile.y) : null;
+        
+        // On utilise l'outil si on a une tuile ou si l'outil est la gomme.
+        if (tileIndex !== null || this.map.tool === 'erase') {
+          this.map.useTool(mouseX, mouseY, tileIndex, this.camera);
+        }
       }
     };
 
@@ -209,6 +270,11 @@ export default class Editor {
     });
 
     this.canvas.addEventListener('mousemove', (e) => {
+      // Toujours mettre à jour la position de la souris pour l'outil arbre
+      const rect = this.canvas.getBoundingClientRect();
+      this.mousePosition.x = e.clientX - rect.left;
+      this.mousePosition.y = e.clientY - rect.top;
+      
       if (isCameraDragging) {
         this.camera.x -= e.clientX - dragStartX;
         this.camera.y -= e.clientY - dragStartY;
@@ -230,6 +296,15 @@ export default class Editor {
     });
 
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Événements pour tracker si la souris est sur le canvas
+    this.canvas.addEventListener('mouseenter', () => {
+      this.isMouseOverCanvas = true;
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      this.isMouseOverCanvas = false;
+    });
 
     // --- Événements de l'interface des calques ---
     document.getElementById('add-layer').addEventListener('click', () => {
@@ -374,6 +449,7 @@ export default class Editor {
         this.map.tool = 'brush';
         this.tileSelector.setTool('tile');
         this.hideTypeZonePanel();
+        this.hideTreePanel();
         this.setActiveToolButton('brush');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -382,6 +458,7 @@ export default class Editor {
         this.map.tool = 'erase';
         this.tileSelector.setTool('tile');
         this.hideTypeZonePanel();
+        this.hideTreePanel();
         this.setActiveToolButton('erase');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -390,6 +467,7 @@ export default class Editor {
         this.map.tool = 'fill';
         this.tileSelector.setTool('tile');
         this.hideTypeZonePanel();
+        this.hideTreePanel();
         this.setActiveToolButton('fill');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -398,8 +476,18 @@ export default class Editor {
         this.map.tool = 'typeZone';
         this.tileSelector.setTool('typeZone');
         this.setActiveToolButton('typeZone');
+        this.hideTreePanel();
         this.showTypeZonePanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones
+    });
+
+    this.toolButtons.tree.addEventListener('click', () => {
+        this.map.tool = 'tree';
+        this.tileSelector.setTool('tree');
+        this.setActiveToolButton('tree');
+        this.hideTypeZonePanel();
+        this.showTreePanel();
+        this.tileSelector.draw(); // Forcer le rendu pour afficher les zones tree
     });
 
     // --- Événements du panneau des zones de type ---
@@ -434,6 +522,15 @@ export default class Editor {
         this.startRenameZone(zoneId, li);
       }
     });
+
+    // --- Événements du panneau des arbres ---
+    document.getElementById('tree-list').addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (li) {
+        const zoneId = li.dataset.zoneId;
+        this.selectTreeZone(zoneId);
+      }
+    });
   }
 
   /**
@@ -448,6 +545,34 @@ export default class Editor {
    */
   hideTypeZonePanel() {
     document.getElementById('type-zone-panel').style.display = 'none';
+  }
+
+  /**
+   * Affiche le panneau des arbres et masque les autres panneaux
+   */
+  showTreePanel() {
+    this.hideTypeZonePanel();
+    document.getElementById('tree-panel').style.display = 'block';
+    this.renderTreePanel(); // Mettre à jour la liste des arbres
+  }
+
+  /**
+   * Masque le panneau des arbres
+   */
+  hideTreePanel() {
+    document.getElementById('tree-panel').style.display = 'none';
+  }
+
+  /**
+   * Sélectionne une zone d'arbre
+   */
+  selectTreeZone(zoneId) {
+    const zone = this.typeZoneManager.zones.find(z => z.id === zoneId);
+    if (zone && zone.category === 'tree') {
+      this.selectedTreeZone = zone;
+      this.renderTreePanel(); // Mettre à jour l'affichage
+      this.tileSelector.draw(); // Mettre à jour l'affichage des zones tree
+    }
   }
 
   /**
@@ -475,12 +600,16 @@ export default class Editor {
    */
   showZoneNamingDialog() {
     const name = prompt('Nom de la zone:');
-    const category = prompt('Catégorie de la zone (ex: path, object, building):', 'custom');
+    const category = prompt('Catégorie de la zone (ex: path, object, building, tree):', 'custom');
     
     if (name && name.trim()) {
       const zone = this.typeZoneManager.finishCreatingZone(name.trim(), category?.trim() || 'custom');
       if (zone) {
         this.renderTypeZonePanel();
+        // Si c'est une zone tree, mettre à jour aussi le panneau des arbres
+        if (zone.category === 'tree') {
+          this.renderTreePanel();
+        }
         this.cancelZoneCreation();
         this.tileSelector.draw(); // Mettre à jour l'affichage
       }
@@ -568,7 +697,75 @@ export default class Editor {
     // La méthode draw de la carte gère déjà le rendu des calques dans le bon ordre
     this.map.draw(this.context, this.camera);
 
+    // Afficher l'aperçu de l'arbre en mode tree seulement si la souris est sur le canvas
+    if (this.map.tool === 'tree' && this.selectedTreeZone && this.isMouseOverCanvas) {
+      this.drawTreePreview();
+    }
+
     this.context.restore();
+  }
+
+  /**
+   * Dessine l'aperçu semi-transparent de l'arbre sélectionné
+   */
+  drawTreePreview() {
+    if (!this.selectedTreeZone) return;
+
+    // Calculer la position centrée de l'arbre
+    const gridCoords = this.map.getGridCoordinates(this.mousePosition.x, this.mousePosition.y, this.camera);
+    const treeWidth = this.selectedTreeZone.bounds.width;
+    const treeHeight = this.selectedTreeZone.bounds.height;
+    
+    // Centrer l'arbre sur le curseur
+    const startX = gridCoords.x - Math.floor(treeWidth / 2);
+    const startY = gridCoords.y - Math.floor(treeHeight / 2);
+
+    this.context.save();
+    this.context.globalAlpha = 0.5; // Semi-transparent
+
+    // Dessiner chaque tile de l'arbre
+    this.selectedTreeZone.tiles.forEach(tile => {
+      const worldX = (startX + tile.x - this.selectedTreeZone.bounds.startX) * this.map.tileset.tileSize;
+      const worldY = (startY + tile.y - this.selectedTreeZone.bounds.startY) * this.map.tileset.tileSize;
+      
+      // Calculer l'index de la tile dans le tileset
+      const tileIndex = this.map.tileset.getTileIndex(tile.x, tile.y);
+      
+      // Dessiner la tile
+      this.map.tileset.drawTileOnCanvas(this.context, worldX, worldY, tileIndex);
+    });
+
+    this.context.restore();
+  }
+
+  /**
+   * Place un arbre sur la carte
+   */
+  placeTree(mouseX, mouseY) {
+    if (!this.selectedTreeZone) return;
+
+    const gridCoords = this.map.getGridCoordinates(mouseX, mouseY, this.camera);
+    const treeWidth = this.selectedTreeZone.bounds.width;
+    const treeHeight = this.selectedTreeZone.bounds.height;
+    
+    // Centrer l'arbre sur le curseur
+    const startX = gridCoords.x - Math.floor(treeWidth / 2);
+    const startY = gridCoords.y - Math.floor(treeHeight / 2);
+
+    // Placer chaque tile de l'arbre
+    this.selectedTreeZone.tiles.forEach(tile => {
+      const worldX = startX + tile.x - this.selectedTreeZone.bounds.startX;
+      const worldY = startY + tile.y - this.selectedTreeZone.bounds.startY;
+      
+      // Calculer l'index de la tile dans le tileset
+      const tileIndex = this.map.tileset.getTileIndex(tile.x, tile.y);
+      
+      // Placer la tile sur la carte
+      this.map.setTile(worldX, worldY, tileIndex);
+    });
+
+    // Sauvegarder les changements
+    this.map.save();
   }
 
   /**

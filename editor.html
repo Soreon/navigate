@@ -29,11 +29,13 @@
           <button id="add-layer">+ Add Layer</button>
         </div>
         <div id="toolkit" class="tools">
-          <button id="tool"><i class="fa-solid fa-paintbrush"></i></button>
-          <button id="erase"><i class="fa-solid fa-eraser"></i></button>
-          <button id="fill"><i class="fa-solid fa-fill-drip"></i></button>
-          <button id="path-tool" class="tool-button"><i class="fa-solid fa-route"></i></button>
-          <button id="type-zone-tool" class="tool-button"><i class="fa-solid fa-vector-square"></i></button>
+          <button id="type-zone-tool" class="tool-button" title="Type Zones - Create and manage tile type zones"><i class="fa-solid fa-vector-square"></i></button>
+          <div class="tool-separator"></div>
+          <button id="tool" title="Brush - Paint individual tiles"><i class="fa-solid fa-paintbrush"></i></button>
+          <button id="erase" title="Eraser - Remove tiles"><i class="fa-solid fa-eraser"></i></button>
+          <button id="fill" title="Fill - Flood fill areas"><i class="fa-solid fa-fill-drip"></i></button>
+          <button id="path-tool" class="tool-button" title="Path - Create paths using predefined patterns"><i class="fa-solid fa-route"></i></button>
+          <button id="tree-tool" class="tool-button" title="Tree - Place trees from type zones"><i class="fa-solid fa-tree"></i></button>
         </div>
         <div id="type-zone-panel" class="panel" style="display: none;">
           <h3>Type Zones</h3>
@@ -52,6 +54,17 @@
           <div id="zone-actions">
             <button id="create-new-zone">+ Create Zone</button>
             <button id="delete-selected-zone" disabled>Delete Zone</button>
+          </div>
+        </div>
+        <div id="tree-panel" class="panel" style="display: none;">
+          <h3>Trees</h3>
+          <div id="tree-selection-info">
+            <p>Select a tree type to place on the map:</p>
+          </div>
+          <ul id="tree-list">
+          </ul>
+          <div id="no-trees-message" style="display: none;">
+            <p style="color: #666; font-style: italic; margin: 0;">No tree zones found. Create tree zones using the Type Zone tool first.</p>
           </div>
         </div>
         <canvas id="tile-preview"></canvas>
