@@ -1,7 +1,7 @@
 import { loadImage } from '../common/utils.js';
 
 export class TileSelector {
-  constructor(tileset, canvas) {
+  constructor(tileset, canvas, typeZoneManager = null) {
     this.tileset = tileset;
     this.canvas = canvas;
     this.tileSize = 16;
@@ -9,6 +9,8 @@ export class TileSelector {
     this.zoom = 1;
     this.offsetX = 0;
     this.offsetY = 0;
+    this.typeZoneManager = typeZoneManager;
+    this.currentTool = 'tile'; // 'tile' ou 'typeZone'
     this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
     this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
     this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
@@ -49,8 +51,18 @@ export class TileSelector {
     this.isDragging = true;
     this.dragStartX = e.clientX;
     this.dragStartY = e.clientY;
-    this.selection = [];
-    this.addToSelection(this.getTileXYFromMouseEvent(e));
+    
+    const tileCoords = this.getTileXYFromMouseEvent(e);
+    
+    if (this.currentTool === 'typeZone' && this.typeZoneManager && this.typeZoneManager.isCreatingZone) {
+      // Mode création de zone de type
+      this.typeZoneManager.startCreatingZone(tileCoords.x, tileCoords.y);
+    } else {
+      // Mode sélection de tiles normal
+      this.selection = [];
+      this.addToSelection(tileCoords);
+    }
+    
     this.draw();
   }
 
@@ -90,7 +102,15 @@ handleMouseMove(e) {
       this.offsetX = Math.round(this.offsetX + e.clientX - this.dragStartX);
       this.offsetY = Math.round(this.offsetY + e.clientY - this.dragStartY);
     } else {
-      this.addToSelection(this.getTileXYFromMouseEvent(e));
+      const tileCoords = this.getTileXYFromMouseEvent(e);
+      
+      if (this.currentTool === 'typeZone' && this.typeZoneManager && this.typeZoneManager.isCreatingZone) {
+        // Mettre à jour la zone en cours de création
+        this.typeZoneManager.updateCreatingZone(tileCoords.x, tileCoords.y);
+      } else {
+        // Mode sélection de tiles normal
+        this.addToSelection(tileCoords);
+      }
     }
 
     this.dragStartX = e.clientX;
@@ -99,8 +119,21 @@ handleMouseMove(e) {
   }
 
   handleMouseUp() {
+    if (this.currentTool === 'typeZone' && this.typeZoneManager && this.typeZoneManager.isCreatingZone && this.typeZoneManager.creatingZone) {
+      // Finaliser la création de zone de type
+      this.onZoneCreated && this.onZoneCreated();
+    }
+    
     this.isDragging = false;
     this.draw();
+  }
+
+  setTool(tool) {
+    this.currentTool = tool;
+  }
+
+  setOnZoneCreatedCallback(callback) {
+    this.onZoneCreated = callback;
   }
 
   drawGrid(context) {
@@ -204,6 +237,12 @@ handleMouseMove(e) {
 
     // dessine une grille sur le tileset
     this.drawGrid(context);
+    
+    // Dessiner les zones de type seulement en mode typeZone
+    if (this.typeZoneManager && this.currentTool === 'typeZone') {
+      this.typeZoneManager.draw(context, this.tileSize, this.zoom, this.offsetX, this.offsetY);
+    }
+    
     context.translate(0.5, 0.5);
   }
 }

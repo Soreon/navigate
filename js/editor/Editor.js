@@ -1,6 +1,7 @@
 import { EditorMap } from './EditorMap.js';
 import { TileSet } from '../common/TileSet.js';
 import { TileSelector } from './TileSelector.js';
+import { TypeZoneManager } from './TypeZoneManager.js';
 import { RandomNumberGenerator } from '../common/RandomNumberGenerator.js';
 import { SEED } from '../common/constants.js';
 
@@ -19,18 +20,22 @@ export default class Editor {
       brush: document.querySelector('#tool'),
       fill: document.querySelector('#fill'),
       erase: document.querySelector('#erase'),
+      typeZone: document.querySelector('#type-zone-tool'),
     };
 
     // --- Création des instances principales ---
     const mapTileset = new TileSet('../../image/tileset.png', 1504, 2519, 16, 157, 94);
     this.ranugen = new RandomNumberGenerator(SEED);
     this.map = new EditorMap(100, 100, this.canvas, this.ranugen, mapTileset);
-    this.tileSelector = new TileSelector(this.map.tileset, this.tilesCanvas);
+    this.typeZoneManager = new TypeZoneManager();
+    this.tileSelector = new TileSelector(this.map.tileset, this.tilesCanvas, this.typeZoneManager);
     
     // --- Initialisation de la caméra et de l'UI ---
     this.camera = { x: 0, y: 0 };
     
     this.renderLayerList(); // Premier rendu de l'interface des calques
+    this.renderTypeZonePanel(); // Premier rendu du panneau des zones de type
+    this.tileSelector.setOnZoneCreatedCallback(() => this.showZoneNamingDialog());
     this._setupEventListeners();
     
     // --- Démarrage de la boucle de dessin ---
@@ -48,6 +53,87 @@ export default class Editor {
     // On ajoute la classe au bouton qui vient d'être activé
     if (this.toolButtons[activeToolName]) {
       this.toolButtons[activeToolName].classList.add('active-tool');
+    }
+  }
+
+  /**
+   * Met à jour l'affichage du panneau des zones de type.
+   */
+  renderTypeZonePanel() {
+    const categorySelect = document.getElementById('category-select');
+    const zoneList = document.getElementById('zone-list');
+    
+    // Mettre à jour les catégories
+    const categories = this.typeZoneManager.getCategories();
+    const currentValue = categorySelect.value;
+    
+    categorySelect.innerHTML = '<option value="all">All Categories</option>';
+    categories.forEach(category => {
+      const option = document.createElement('option');
+      option.value = category;
+      option.textContent = category;
+      categorySelect.appendChild(option);
+    });
+    
+    // Restaurer la sélection si elle existe toujours
+    if (categories.includes(currentValue)) {
+      categorySelect.value = currentValue;
+    }
+    
+    // Mettre à jour la liste des zones
+    this.renderZoneList();
+  }
+
+  /**
+   * Met à jour l'affichage de la liste des zones.
+   */
+  renderZoneList() {
+    const categorySelect = document.getElementById('category-select');
+    const zoneList = document.getElementById('zone-list');
+    const deleteButton = document.getElementById('delete-selected-zone');
+    
+    const selectedCategory = categorySelect.value;
+    const zones = selectedCategory === 'all' 
+      ? this.typeZoneManager.zones 
+      : this.typeZoneManager.getZonesByCategory(selectedCategory);
+    
+    zoneList.innerHTML = '';
+    
+    zones.forEach(zone => {
+      const li = document.createElement('li');
+      li.dataset.zoneId = zone.id;
+      
+      if (this.typeZoneManager.selectedZone && this.typeZoneManager.selectedZone.id === zone.id) {
+        li.classList.add('selected');
+        deleteButton.disabled = false;
+      }
+      
+      const zoneInfo = document.createElement('div');
+      zoneInfo.className = 'zone-info';
+      
+      const zoneName = document.createElement('div');
+      zoneName.className = 'zone-name';
+      zoneName.textContent = zone.name;
+      
+      const zoneDetails = document.createElement('div');
+      zoneDetails.className = 'zone-details';
+      zoneDetails.textContent = `${zone.bounds.width}×${zone.bounds.height} tiles`;
+      
+      zoneInfo.appendChild(zoneName);
+      zoneInfo.appendChild(zoneDetails);
+      
+      const zoneCategory = document.createElement('span');
+      zoneCategory.className = 'zone-category';
+      zoneCategory.textContent = zone.category;
+      
+      li.appendChild(zoneInfo);
+      li.appendChild(zoneCategory);
+      
+      zoneList.appendChild(li);
+    });
+    
+    if (!this.typeZoneManager.selectedZone) {
+      deleteButton.disabled = true;
     }
   }
 
@@ -286,18 +372,191 @@ export default class Editor {
     // On utilise la nouvelle méthode pour gérer le changement d'outil et de style
     this.toolButtons.brush.addEventListener('click', () => {
         this.map.tool = 'brush';
+        this.tileSelector.setTool('tile');
+        this.hideTypeZonePanel();
         this.setActiveToolButton('brush');
+        this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
 
     this.toolButtons.erase.addEventListener('click', () => {
         this.map.tool = 'erase';
+        this.tileSelector.setTool('tile');
+        this.hideTypeZonePanel();
         this.setActiveToolButton('erase');
+        this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
 
     this.toolButtons.fill.addEventListener('click', () => {
         this.map.tool = 'fill';
+        this.tileSelector.setTool('tile');
+        this.hideTypeZonePanel();
         this.setActiveToolButton('fill');
+        this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
+
+    this.toolButtons.typeZone.addEventListener('click', () => {
+        this.map.tool = 'typeZone';
+        this.tileSelector.setTool('typeZone');
+        this.setActiveToolButton('typeZone');
+        this.showTypeZonePanel();
+        this.tileSelector.draw(); // Forcer le rendu pour afficher les zones
+    });
+
+    // --- Événements du panneau des zones de type ---
+    document.getElementById('category-select').addEventListener('change', () => {
+      this.renderZoneList();
+    });
+
+    document.getElementById('create-new-zone').addEventListener('click', () => {
+      this.startZoneCreation();
+    });
+
+    document.getElementById('cancel-zone-creation').addEventListener('click', () => {
+      this.cancelZoneCreation();
+    });
+
+    document.getElementById('delete-selected-zone').addEventListener('click', () => {
+      this.deleteSelectedZone();
+    });
+
+    document.getElementById('zone-list').addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (li) {
+        const zoneId = li.dataset.zoneId;
+        this.selectZone(zoneId);
+      }
+    });
+
+    document.getElementById('zone-list').addEventListener('dblclick', (e) => {
+      const li = e.target.closest('li');
+      if (li) {
+        const zoneId = li.dataset.zoneId;
+        this.startRenameZone(zoneId, li);
+      }
+    });
+  }
+
+  /**
+   * Affiche le panneau des zones de type et masque les autres panneaux
+   */
+  showTypeZonePanel() {
+    document.getElementById('type-zone-panel').style.display = 'block';
+  }
+
+  /**
+   * Masque le panneau des zones de type
+   */
+  hideTypeZonePanel() {
+    document.getElementById('type-zone-panel').style.display = 'none';
+  }
+
+  /**
+   * Démarre le processus de création d'une zone
+   */
+  startZoneCreation() {
+    this.typeZoneManager.isCreatingZone = true;
+    this.tileSelector.setTool('typeZone');
+    document.getElementById('zone-creation-info').style.display = 'block';
+    document.getElementById('zone-actions').style.display = 'none';
+  }
+
+  /**
+   * Annule la création d'une zone
+   */
+  cancelZoneCreation() {
+    this.typeZoneManager.cancelCreatingZone();
+    // Ne pas changer l'outil, rester en mode typeZone
+    document.getElementById('zone-creation-info').style.display = 'none';
+    document.getElementById('zone-actions').style.display = 'flex';
+  }
+
+  /**
+   * Affiche le dialogue de nommage de la zone
+   */
+  showZoneNamingDialog() {
+    const name = prompt('Nom de la zone:');
+    const category = prompt('Catégorie de la zone (ex: path, object, building):', 'custom');
+    
+    if (name && name.trim()) {
+      const zone = this.typeZoneManager.finishCreatingZone(name.trim(), category?.trim() || 'custom');
+      if (zone) {
+        this.renderTypeZonePanel();
+        this.cancelZoneCreation();
+        this.tileSelector.draw(); // Mettre à jour l'affichage
+      }
+    } else {
+      this.typeZoneManager.cancelCreatingZone();
+      this.cancelZoneCreation();
+    }
+  }
+
+  /**
+   * Supprime la zone sélectionnée
+   */
+  deleteSelectedZone() {
+    if (this.typeZoneManager.selectedZone) {
+      const confirmed = confirm(`Supprimer la zone "${this.typeZoneManager.selectedZone.name}" ?`);
+      if (confirmed) {
+        this.typeZoneManager.deleteZone(this.typeZoneManager.selectedZone.id);
+        this.renderTypeZonePanel();
+        if (this.tileSelector.currentTool === 'typeZone') {
+          this.tileSelector.draw(); // Mettre à jour l'affichage
+        }
+      }
+    }
+  }
+
+  /**
+   * Sélectionne une zone
+   */
+  selectZone(zoneId) {
+    this.typeZoneManager.selectZone(zoneId);
+    this.renderZoneList();
+    if (this.tileSelector.currentTool === 'typeZone') {
+      this.tileSelector.draw(); // Mettre à jour l'affichage des zones
+    }
+  }
+
+  /**
+   * Démarre le renommage d'une zone
+   */
+  startRenameZone(zoneId, li) {
+    const zone = this.typeZoneManager.zones.find(z => z.id === zoneId);
+    if (!zone) return;
+
+    const nameDiv = li.querySelector('.zone-name');
+    const originalName = nameDiv.textContent;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = originalName;
+    input.style.width = '100%';
+
+    nameDiv.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const finalize = (event) => {
+      input.removeEventListener('blur', finalize);
+      document.removeEventListener('keydown', keydownHandler);
+
+      if (event.type === 'blur' || (event.type === 'keydown' && event.key === 'Enter')) {
+        const newName = input.value.trim();
+        if (newName && newName !== originalName) {
+          this.typeZoneManager.renameZone(zoneId, newName);
+        }
+      }
+
+      this.renderTypeZonePanel();
+    };
+
+    const keydownHandler = (e) => {
+      if (e.key === 'Enter' || e.key === 'Escape') {
+        finalize(e);
+      }
+    };
+
+    input.addEventListener('blur', finalize);
+    document.addEventListener('keydown', keydownHandler);
   }
 
   draw() {
