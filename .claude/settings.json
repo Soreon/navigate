@@ -1,4 +1,11 @@
 {
+  "permissions": {
+    "allow": [
+    ],
+    "deny": [
+      "Read(./.history)"
+    ]
+  },
   "env": {
     "HTTP_PROXY": "http://10.40.10.225:8080",
     "HTTPS_PROXY": "http://10.40.10.225:8080"

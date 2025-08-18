@@ -1,4 +1,4 @@
-Voici un fichier explicatif expliquant le fonctionnement des tiles de chemin. 
+# Fonctionnement des tiles de chemin. 
 Partons du principe que le fond de la map est forcément de type "herbe". On le note H.
 
 Quand on passe en mode dessin de chemin, on doit selectionner 15 tiles de type chemin. 
