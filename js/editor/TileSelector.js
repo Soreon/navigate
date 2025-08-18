@@ -238,11 +238,13 @@ handleMouseMove(e) {
     // dessine une grille sur le tileset
     this.drawGrid(context);
     
-    // Dessiner les zones de type en mode typeZone, ou les zones tree en mode tree
+    // Dessiner les zones de type selon l'outil actif
     if (this.typeZoneManager && this.currentTool === 'typeZone') {
       this.typeZoneManager.draw(context, this.tileSize, this.zoom, this.offsetX, this.offsetY);
     } else if (this.typeZoneManager && this.currentTool === 'tree') {
       this.typeZoneManager.drawTreeZones(context, this.tileSize, this.zoom, this.offsetX, this.offsetY);
+    } else if (this.typeZoneManager && this.currentTool === 'path') {
+      this.typeZoneManager.drawPathZones(context, this.tileSize, this.zoom, this.offsetX, this.offsetY);
     }
     
     context.translate(0.5, 0.5);

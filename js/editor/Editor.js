@@ -2,6 +2,7 @@ import { EditorMap } from './EditorMap.js';
 import { TileSet } from '../common/TileSet.js';
 import { TileSelector } from './TileSelector.js';
 import { TypeZoneManager } from './TypeZoneManager.js';
+import { PathTileCalculator } from './PathTileCalculator.js';
 import { RandomNumberGenerator } from '../common/RandomNumberGenerator.js';
 import { SEED } from '../common/constants.js';
 
@@ -22,6 +23,7 @@ export default class Editor {
       erase: document.querySelector('#erase'),
       typeZone: document.querySelector('#type-zone-tool'),
       tree: document.querySelector('#tree-tool'),
+      path: document.querySelector('#path-tool'),
     };
 
     // --- Création des instances principales ---
@@ -29,17 +31,22 @@ export default class Editor {
     this.ranugen = new RandomNumberGenerator(SEED);
     this.map = new EditorMap(100, 100, this.canvas, this.ranugen, mapTileset);
     this.typeZoneManager = new TypeZoneManager();
+    this.pathTileCalculator = new PathTileCalculator();
     this.tileSelector = new TileSelector(this.map.tileset, this.tilesCanvas, this.typeZoneManager);
     
     // --- Initialisation de la caméra et de l'UI ---
     this.camera = { x: 0, y: 0 };
     this.selectedTreeZone = null;
+    this.selectedPathZone = null;
     this.mousePosition = { x: 0, y: 0 }; // Position de la souris sur le canvas principal
     this.isMouseOverCanvas = false; // Pour savoir si la souris est sur le canvas
+    this.pathDrawing = []; // Points du chemin en cours de dessin
+    this.pathClickStartPosition = null; // Position du clic initial pour détecter clic vs drag
     
     this.renderLayerList(); // Premier rendu de l'interface des calques
     this.renderTypeZonePanel(); // Premier rendu du panneau des zones de type
     this.renderTreePanel(); // Premier rendu du panneau des arbres
+    this.renderPathPanel(); // Premier rendu du panneau des chemins
     this.tileSelector.setOnZoneCreatedCallback(() => this.showZoneNamingDialog());
     this._setupEventListeners();
     
@@ -87,6 +94,54 @@ export default class Editor {
     
     // Mettre à jour la liste des zones
     this.renderZoneList();
+  }
+
+  /**
+   * Met à jour l'affichage du panneau des chemins.
+   */
+  renderPathPanel() {
+    const pathList = document.getElementById('path-list');
+    const noPathsMessage = document.getElementById('no-paths-message');
+    
+    // Récupérer les zones de type "path"
+    const pathZones = this.typeZoneManager.getZonesByCategory('path');
+    
+    pathList.innerHTML = '';
+    
+    if (pathZones.length === 0) {
+      pathList.style.display = 'none';
+      noPathsMessage.style.display = 'block';
+      return;
+    }
+    
+    pathList.style.display = 'block';
+    noPathsMessage.style.display = 'none';
+    
+    pathZones.forEach(zone => {
+      const li = document.createElement('li');
+      li.dataset.zoneId = zone.id;
+      
+      if (this.selectedPathZone && this.selectedPathZone.id === zone.id) {
+        li.classList.add('selected');
+      }
+      
+      const pathInfo = document.createElement('div');
+      pathInfo.className = 'path-info';
+      
+      const pathName = document.createElement('div');
+      pathName.className = 'path-name';
+      pathName.textContent = zone.name;
+      
+      const pathDetails = document.createElement('div');
+      pathDetails.className = 'path-details';
+      pathDetails.textContent = `${zone.bounds.width}×${zone.bounds.height} tiles`;
+      
+      pathInfo.appendChild(pathName);
+      pathInfo.appendChild(pathDetails);
+      li.appendChild(pathInfo);
+      
+      pathList.appendChild(li);
+    });
   }
 
   /**
@@ -237,19 +292,23 @@ export default class Editor {
       const mouseY = e.clientY - rect.top;
       
       if (this.map.tool === 'tree') {
-        // Mode placement d'arbres
         if (this.selectedTreeZone) {
           this.placeTree(mouseX, mouseY);
         }
+      } else if (this.map.tool === 'path') {
+        // En mode chemin, on se contente d'ajouter un point.
+        // La mise à jour se fait dans l'écouteur mousemove.
+        if (this.selectedPathZone) {
+          const gridCoords = this.map.getGridCoordinates(mouseX, mouseY, this.camera);
+          this.addPointToPath(gridCoords.x, gridCoords.y);
+        }
       } else {
         // Autres outils
-        // Pour la gomme, pas besoin de tuile sélectionnée.
         if (this.tileSelector.selection.length === 0 && this.map.tool !== 'erase') return;
         
         const firstSelectedTile = this.tileSelector.selection[0];
         const tileIndex = firstSelectedTile ? this.tileSelector.tileset.getTileIndex(firstSelectedTile.x, firstSelectedTile.y) : null;
         
-        // On utilise l'outil si on a une tuile ou si l'outil est la gomme.
         if (tileIndex !== null || this.map.tool === 'erase') {
           this.map.useTool(mouseX, mouseY, tileIndex, this.camera);
         }
@@ -258,19 +317,30 @@ export default class Editor {
 
     // --- Événements de la souris sur le canvas principal (LOGIQUE RESTAURÉE) ---
     this.canvas.addEventListener('mousedown', (e) => {
-      // Clic droit ou CTRL+clic gauche pour le déplacement de la caméra
       if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
         isCameraDragging = true;
         dragStartX = e.clientX;
         dragStartY = e.clientY;
-      } else if (e.button === 0) { // Clic gauche simple pour dessiner
+      } else if (e.button === 0) {
         isDrawing = true;
-        useCurrentTool(e);
+        
+        if (this.map.tool === 'path') {
+          const rect = this.canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          const gridCoords = this.map.getGridCoordinates(mouseX, mouseY, this.camera);
+          this.pathClickStartPosition = { x: gridCoords.x, y: gridCoords.y };
+          
+          // On ajoute le premier point et on lance une première mise à jour
+          this.addPointToPath(gridCoords.x, gridCoords.y);
+          this.updatePathAndNeighbors(); // Mise à jour initiale
+        } else {
+            useCurrentTool(e);
+        }
       }
     });
 
     this.canvas.addEventListener('mousemove', (e) => {
-      // Toujours mettre à jour la position de la souris pour l'outil arbre
       const rect = this.canvas.getBoundingClientRect();
       this.mousePosition.x = e.clientX - rect.left;
       this.mousePosition.y = e.clientY - rect.top;
@@ -281,14 +351,48 @@ export default class Editor {
         dragStartX = e.clientX;
         dragStartY = e.clientY;
       } else if (isDrawing) {
-        useCurrentTool(e);
+        if (this.map.tool === 'path') {
+          // **LA MODIFICATION CLÉ EST ICI**
+          // On ajoute le nouveau point puis on met à jour le visuel en direct.
+          const gridCoords = this.map.getGridCoordinates(this.mousePosition.x, this.mousePosition.y, this.camera);
+          this.addPointToPath(gridCoords.x, gridCoords.y);
+          this.updatePathAndNeighbors(); // Mise à jour en temps réel
+        } else {
+          useCurrentTool(e);
+        }
       }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
       if (isDrawing) {
         isDrawing = false;
-        this.map.save(); // Sauvegarde l'état après avoir dessiné
+        
+        if (this.map.tool === 'path') {
+          if (this.pathClickStartPosition) {
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const gridCoords = this.map.getGridCoordinates(mouseX, mouseY, this.camera);
+            
+            const isClick = (gridCoords.x === this.pathClickStartPosition.x && 
+                           gridCoords.y === this.pathClickStartPosition.y);
+            
+            // Si c'était un simple clic, on place juste une tile
+            if (isClick && this.pathDrawing.length <= 1) {
+              // Placer une seule tile C07 à la position cliquée
+              this.placeTileFromPathZone(gridCoords.x, gridCoords.y, 6); // C07
+              this.map.save();
+            } else {
+              // Sinon, on finalise simplement le chemin déjà dessiné
+              this.finishPath();
+            }
+            this.pathClickStartPosition = null;
+          } else {
+            this.finishPath();
+          }
+        } else {
+          this.map.save();
+        }
       }
       if (isCameraDragging) {
         isCameraDragging = false;
@@ -450,6 +554,7 @@ export default class Editor {
         this.tileSelector.setTool('tile');
         this.hideTypeZonePanel();
         this.hideTreePanel();
+        this.hidePathPanel();
         this.setActiveToolButton('brush');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -459,6 +564,7 @@ export default class Editor {
         this.tileSelector.setTool('tile');
         this.hideTypeZonePanel();
         this.hideTreePanel();
+        this.hidePathPanel();
         this.setActiveToolButton('erase');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -468,6 +574,7 @@ export default class Editor {
         this.tileSelector.setTool('tile');
         this.hideTypeZonePanel();
         this.hideTreePanel();
+        this.hidePathPanel();
         this.setActiveToolButton('fill');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -477,6 +584,7 @@ export default class Editor {
         this.tileSelector.setTool('typeZone');
         this.setActiveToolButton('typeZone');
         this.hideTreePanel();
+        this.hidePathPanel();
         this.showTypeZonePanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones
     });
@@ -486,8 +594,19 @@ export default class Editor {
         this.tileSelector.setTool('tree');
         this.setActiveToolButton('tree');
         this.hideTypeZonePanel();
+        this.hidePathPanel();
         this.showTreePanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones tree
+    });
+
+    this.toolButtons.path.addEventListener('click', () => {
+        this.map.tool = 'path';
+        this.tileSelector.setTool('path');
+        this.setActiveToolButton('path');
+        this.hideTypeZonePanel();
+        this.hideTreePanel();
+        this.showPathPanel();
+        this.tileSelector.draw(); // Forcer le rendu pour afficher les zones path
     });
 
     // --- Événements du panneau des zones de type ---
@@ -531,6 +650,15 @@ export default class Editor {
         this.selectTreeZone(zoneId);
       }
     });
+
+    // --- Événements du panneau des chemins ---
+    document.getElementById('path-list').addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (li) {
+        const zoneId = li.dataset.zoneId;
+        this.selectPathZone(zoneId);
+      }
+    });
   }
 
   /**
@@ -561,6 +689,35 @@ export default class Editor {
    */
   hideTreePanel() {
     document.getElementById('tree-panel').style.display = 'none';
+  }
+
+  /**
+   * Affiche le panneau des chemins et masque les autres panneaux
+   */
+  showPathPanel() {
+    this.hideTypeZonePanel();
+    this.hideTreePanel();
+    document.getElementById('path-panel').style.display = 'block';
+    this.renderPathPanel(); // Mettre à jour la liste des chemins
+  }
+
+  /**
+   * Masque le panneau des chemins
+   */
+  hidePathPanel() {
+    document.getElementById('path-panel').style.display = 'none';
+  }
+
+  /**
+   * Sélectionne une zone de chemin
+   */
+  selectPathZone(zoneId) {
+    const zone = this.typeZoneManager.zones.find(z => z.id === zoneId);
+    if (zone && zone.category === 'path') {
+      this.selectedPathZone = zone;
+      this.renderPathPanel(); // Mettre à jour l'affichage
+      this.tileSelector.draw(); // Mettre à jour l'affichage des zones path
+    }
   }
 
   /**
@@ -606,9 +763,11 @@ export default class Editor {
       const zone = this.typeZoneManager.finishCreatingZone(name.trim(), category?.trim() || 'custom');
       if (zone) {
         this.renderTypeZonePanel();
-        // Si c'est une zone tree, mettre à jour aussi le panneau des arbres
+        // Mettre à jour les panneaux spécifiques selon la catégorie
         if (zone.category === 'tree') {
           this.renderTreePanel();
+        } else if (zone.category === 'path') {
+          this.renderPathPanel();
         }
         this.cancelZoneCreation();
         this.tileSelector.draw(); // Mettre à jour l'affichage
@@ -737,6 +896,119 @@ export default class Editor {
 
     this.context.restore();
   }
+
+  /**
+   * Ajoute un point au chemin en cours de dessin
+   */
+  addPointToPath(x, y) {
+    if (!this.selectedPathZone) return;
+    
+    // Éviter les doublons de points consécutifs
+    const lastPoint = this.pathDrawing[this.pathDrawing.length - 1];
+    if (lastPoint && lastPoint.x === x && lastPoint.y === y) return;
+    
+    this.pathDrawing.push({ x, y });
+    
+    // Marquer cette position comme chemin pour les calculs de voisinage
+    this.pathTileCalculator.markAsPath(x, y);
+  }
+
+  /**
+   * Finalise le chemin et place les tiles
+   */
+  finishPath() {
+    if (!this.selectedPathZone || this.pathDrawing.length === 0) {
+      this.pathDrawing = [];
+      this.pathTileCalculator.clearMarkedPositions();
+      return;
+    }
+
+    // Mettre à jour les tiles du chemin et leurs voisins
+    this.updatePathAndNeighbors();
+
+    // Nettoyer et sauvegarder
+    this.pathDrawing = [];
+    this.pathTileCalculator.clearMarkedPositions();
+    this.map.save();
+  }
+
+  updatePathAndNeighbors() {
+    // Version simplifiée : placer C07 sur tous les points du chemin
+    this.pathDrawing.forEach(point => {
+      this.placeIntelligentPathTileAt(point.x, point.y);
+    });
+  }
+
+  /**
+   * Crée un tube rectangulaire de chemin basé sur les points de début et fin
+   */
+  createPathTube() {
+    if (this.pathDrawing.length < 2) {
+      // Si on n'a qu'un point, traiter comme un clic simple
+      if (this.pathDrawing.length === 1) {
+        const point = this.pathDrawing[0];
+        this.place3x3PathBlock(point.x, point.y);
+      }
+      return;
+    }
+
+    // Calculer les limites du rectangle englobant tous les points
+    const minX = Math.min(...this.pathDrawing.map(p => p.x));
+    const maxX = Math.max(...this.pathDrawing.map(p => p.x));
+    const minY = Math.min(...this.pathDrawing.map(p => p.y));
+    const maxY = Math.max(...this.pathDrawing.map(p => p.y));
+
+    // Marquer toutes les positions dans le rectangle comme chemin
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        this.pathTileCalculator.markAsPath(x, y);
+      }
+    }
+
+    // Placer les tiles avec les bonnes transitions
+    // D'abord remplir l'intérieur avec des tiles pleines (C07)
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        this.placeIntelligentPathTileAt(x, y);
+      }
+    }
+  }
+
+  /**
+   * Place une tile de chemin (toujours C07 maintenant)
+   */
+  placeIntelligentPathTileAt(gridX, gridY) {
+    if (!this.selectedPathZone) return;
+
+    // Simplement placer C07 (index 6) partout où il y a un chemin
+    if (this.pathTileCalculator.isMarkedAsPath(gridX, gridY)) {
+      this.placeTileFromPathZone(gridX, gridY, 6); // C07 - chemin complet
+    }
+  }
+
+  /**
+   * Place une tile spécifique de la zone de chemin
+   */
+  placeTileFromPathZone(gridX, gridY, pathTileIndex) {
+    if (!this.selectedPathZone) return;
+    
+    // La zone de chemin doit être arrangée en grille 5x3 (C01-C15)
+    // Calculer les coordonnées dans la zone basées sur l'index
+    const tilesPerRow = 5; // C01-C05, C06-C10, C11-C15
+    const tileRow = Math.floor(pathTileIndex / tilesPerRow);
+    const tileCol = pathTileIndex % tilesPerRow;
+    
+    // Coordonnées de la tile dans la zone
+    const tileInZoneX = this.selectedPathZone.bounds.startX + tileCol;
+    const tileInZoneY = this.selectedPathZone.bounds.startY + tileRow;
+    
+    // Calculer l'index de cette tile dans le tileset
+    const tileIndex = this.map.tileset.getTileIndex(tileInZoneX, tileInZoneY);
+    
+    // Placer la tile sur la carte
+    this.map.setTile(gridX, gridY, tileIndex);
+  }
+
 
   /**
    * Place un arbre sur la carte
