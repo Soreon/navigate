@@ -32,24 +32,16 @@ export class EditorMap {
    * @param {object} camera - L'objet caméra {x, y}.
    */
   draw(context, camera) {
-    const renderedPositions = new Set(); // Stocke les positions déjà dessinées (ex: "x10,y20")
-
-    // On parcourt les calques du plus haut (fin du tableau) au plus bas (début du tableau)
-    for (let i = this.layers.length - 1; i >= 0; i--) {
+    // On parcourt les calques du plus bas (début du tableau) au plus haut (fin du tableau)
+    // pour que les calques supérieurs se dessinent par-dessus les inférieurs
+    for (let i = 0; i < this.layers.length; i++) {
       const layer = this.layers[i];
       for (const tileKey in layer.tiles) {
-        // Si une tuile a déjà été dessinée à cette position par un calque supérieur, on l'ignore
-        if (renderedPositions.has(tileKey)) {
-          continue;
-        }
-
         const [x, y] = tileKey.split(',').map(coord => parseInt(coord.slice(1)));
         const tileIndex = layer.tiles[tileKey];
         
+        // Dessiner toutes les tiles, la transparence sera gérée naturellement par le canvas
         this.tileset.drawTileOnCanvas(context, x * this.tileset.tileSize, y * this.tileset.tileSize, tileIndex);
-        
-        // On ajoute la position au set pour qu'elle ne soit pas redessinée par un calque inférieur
-        renderedPositions.add(tileKey);
       }
     }
 

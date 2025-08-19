@@ -14,6 +14,9 @@ export default class Editor {
     this.canvas.width = 800;
     this.canvas.height = 800;
     this.context.imageSmoothingEnabled = false;
+    
+    // S'assurer que le canvas a un fond transparent
+    this.canvas.style.backgroundColor = 'transparent';
 
     this.tilesCanvas = document.getElementById('tiles');
 
