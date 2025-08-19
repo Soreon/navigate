@@ -1054,18 +1054,41 @@ export default class Editor {
    * Détermine la tile de transition basée sur les voisins selon CLAUDE.md
    */
   getTransitionTileFromNeighbors(neighbors) {
-    // Selon CLAUDE.md et l'exemple fourni, nous devons créer un pattern 3x3 autour du chemin
-    // L'arrangement des tiles est :
-    // C01 C02 C03
-    // C06 C07 C08  
-    // C11 C12 C13
+    // According to CLAUDE.md, the tile arrangement and 0-based indices are:
+    // C01(0) C02(1) C03(2) C04(3) C05(4)
+    // C06(5) C07(6) C08(7) C09(8) C10(9)
+    // C11(10) C12(11) C13(12) ...
     
-    // Compter les voisins pour déterminer la position relative
     const hasTop = neighbors.top;
     const hasBottom = neighbors.bottom;
     const hasLeft = neighbors.left;
     const hasRight = neighbors.right;
     
+    // --- FIX START ---
+    // Prioritize checking for "inner corners" where a grass tile is surrounded
+    // on two adjacent sides by path tiles. These are more specific cases
+    // than simple edges and must be checked first to resolve the ambiguity.
+
+    // C05 (index 4): Inner corner with grass at top-right. Needs path to its left and bottom.
+    if (hasLeft && hasBottom && !hasTop && !hasRight) {
+        return 4;
+    }
+    // C04 (index 3): Inner corner with grass at top-left. Needs path to its right and bottom.
+    if (hasRight && hasBottom && !hasTop && !hasLeft) {
+        return 3;
+    }
+    // C10 (index 9): Inner corner with grass at bottom-right. Needs path to its left and top.
+    if (hasLeft && hasTop && !hasBottom && !hasRight) {
+        return 9;
+    }
+    // C09 (index 8): Inner corner with grass at bottom-left. Needs path to its right and top.
+    if (hasRight && hasTop && !hasBottom && !hasLeft) {
+        return 8;
+    }
+    // --- FIX END ---
+    
+    // Original logic for edges and outer corners follows.
+
     // Position au-dessus du chemin (ligne du haut)
     if (hasBottom && !hasTop) {
       if (hasLeft && !hasRight) return 2; // C03 - coin haut-droite
@@ -1084,30 +1107,29 @@ export default class Editor {
     
     // Position à gauche du chemin (colonne de gauche)
     if (hasRight && !hasLeft) {
-      if (hasTop && !hasBottom) return 0; // C01 - coin haut-gauche
-      if (hasBottom && !hasTop) return 10; // C11 - coin bas-gauche  
+      if (hasTop && !hasBottom) return 5; // C06 handles this, but C01 is an outer corner
+      if (hasBottom && !hasTop) return 5; // C06 handles this, but C11 is an outer corner
       if (hasTop && hasBottom) return 5; // C06 - milieu gauche
       if (!hasTop && !hasBottom) return 5; // C06 - milieu gauche par défaut
     }
     
     // Position à droite du chemin (colonne de droite)
     if (hasLeft && !hasRight) {
-      if (hasTop && !hasBottom) return 2; // C03 - coin haut-droite
-      if (hasBottom && !hasTop) return 12; // C13 - coin bas-droite
+      if (hasTop && !hasBottom) return 7; // C08 handles this, but C03 is an outer corner
+      if (hasBottom && !hasTop) return 7; // C08 handles this, but C13 is an outer corner
       if (hasTop && hasBottom) return 7; // C08 - milieu droite  
       if (!hasTop && !hasBottom) return 7; // C08 - milieu droite par défaut
     }
     
-    // Coins diagonaux (positions où il n'y a pas de chemin adjacent direct)
+    // Coins diagonaux (positions where there are no direct adjacent path tiles)
     if (!hasTop && !hasBottom && !hasLeft && !hasRight) {
-      // Vérifier les diagonales pour déterminer la position du coin
       if (neighbors.bottomRight) return 0; // C01 - coin haut-gauche
       if (neighbors.bottomLeft) return 2; // C03 - coin haut-droite
       if (neighbors.topRight) return 10; // C11 - coin bas-gauche
       if (neighbors.topLeft) return 12; // C13 - coin bas-droite
     }
 
-    // Si aucun pattern reconnu, pas de transition
+    // If no pattern is recognized, no transition
     return null;
   }
 
