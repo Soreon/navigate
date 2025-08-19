@@ -460,6 +460,71 @@ body[data-tool="move"] #canvas:hover{
   text-align: center;
 }
 
+/* Styles pour le panneau de l'eau */
+#water-selection-info {
+  margin-bottom: 10px;
+}
+
+#water-selection-info p {
+  margin: 0;
+  font-size: 12px;
+  color: #555;
+}
+
+#water-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+#water-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  font-size: 12px;
+}
+
+#water-list li:last-child {
+  border-bottom: none;
+}
+
+#water-list li:hover {
+  background-color: #e6f2ff;
+}
+
+#water-list li.selected {
+  background-color: #cce5ff;
+  font-weight: bold;
+}
+
+.water-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.water-name {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.water-details {
+  font-size: 10px;
+  color: #666;
+}
+
+#no-water-message {
+  padding: 20px;
+  text-align: center;
+}
+
 /* Styles pour le panneau d'historique */
 #history-list {
   list-style: none;

@@ -27,6 +27,7 @@ export default class Editor {
       typeZone: document.querySelector('#type-zone-tool'),
       tree: document.querySelector('#tree-tool'),
       path: document.querySelector('#path-tool'),
+      water: document.querySelector('#water-tool'),
     };
 
     // --- Création des instances principales ---
@@ -41,15 +42,19 @@ export default class Editor {
     this.camera = { x: 0, y: 0 };
     this.selectedTreeZone = null;
     this.selectedPathZone = null;
+    this.selectedWaterZone = null;
     this.mousePosition = { x: 0, y: 0 }; // Position de la souris sur le canvas principal
     this.isMouseOverCanvas = false; // Pour savoir si la souris est sur le canvas
     this.pathDrawing = []; // Points du chemin en cours de dessin
     this.pathClickStartPosition = null; // Position du clic initial pour détecter clic vs drag
+    this.waterStartPosition = null; // Position de début du rectangle d'eau
+    this.waterCurrentPosition = null; // Position actuelle de la souris pour l'aperçu du rectangle
     
     this.renderLayerList(); // Premier rendu de l'interface des calques
     this.renderTypeZonePanel(); // Premier rendu du panneau des zones de type
     this.renderTreePanel(); // Premier rendu du panneau des arbres
     this.renderPathPanel(); // Premier rendu du panneau des chemins
+    this.renderWaterPanel(); // Premier rendu du panneau de l'eau
     this.tileSelector.setOnZoneCreatedCallback(() => this.showZoneNamingDialog());
     this._setupEventListeners();
     
@@ -305,6 +310,8 @@ export default class Editor {
           const gridCoords = this.map.getGridCoordinates(mouseX, mouseY, this.camera);
           this.addPointToPath(gridCoords.x, gridCoords.y);
         }
+      } else if (this.map.tool === 'water') {
+        // En mode eau, on ne fait rien dans useCurrentTool car on gère tout dans mousedown/mouseup
       } else {
         // Autres outils
         if (this.tileSelector.selection.length === 0 && this.map.tool !== 'erase') return;
@@ -337,6 +344,15 @@ export default class Editor {
           // On ajoute le premier point et on lance une première mise à jour
           this.addPointToPath(gridCoords.x, gridCoords.y);
           this.updatePathAndNeighbors(); // Mise à jour initiale
+        } else if (this.map.tool === 'water') {
+          const rect = this.canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          const gridCoords = this.map.getGridCoordinates(mouseX, mouseY, this.camera);
+          
+          // Commencer le dessin du rectangle
+          this.waterStartPosition = { x: gridCoords.x, y: gridCoords.y };
+          this.waterCurrentPosition = { x: gridCoords.x, y: gridCoords.y };
         } else {
             useCurrentTool(e);
         }
@@ -360,6 +376,10 @@ export default class Editor {
           const gridCoords = this.map.getGridCoordinates(this.mousePosition.x, this.mousePosition.y, this.camera);
           this.addPointToPath(gridCoords.x, gridCoords.y);
           this.updatePathAndNeighbors(); // Mise à jour en temps réel
+        } else if (this.map.tool === 'water') {
+          // Mettre à jour la position actuelle pour l'aperçu du rectangle
+          const gridCoords = this.map.getGridCoordinates(this.mousePosition.x, this.mousePosition.y, this.camera);
+          this.waterCurrentPosition = { x: gridCoords.x, y: gridCoords.y };
         } else {
           useCurrentTool(e);
         }
@@ -395,6 +415,13 @@ export default class Editor {
             this.pathClickStartPosition = null;
           } else {
             this.finishPath();
+          }
+        } else if (this.map.tool === 'water') {
+          if (this.waterStartPosition && this.waterCurrentPosition) {
+            // Finaliser le rectangle d'eau
+            this.drawWaterRectangle();
+            this.waterStartPosition = null;
+            this.waterCurrentPosition = null;
           }
         } else if (this.map.tool !== 'tree') {
           // Ne pas sauvegarder pour l'outil tree car placeTree() le fait déjà
@@ -568,6 +595,7 @@ export default class Editor {
         this.hideTypeZonePanel();
         this.hideTreePanel();
         this.hidePathPanel();
+        this.hideWaterPanel();
         this.setActiveToolButton('brush');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -578,6 +606,7 @@ export default class Editor {
         this.hideTypeZonePanel();
         this.hideTreePanel();
         this.hidePathPanel();
+        this.hideWaterPanel();
         this.setActiveToolButton('erase');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -588,6 +617,7 @@ export default class Editor {
         this.hideTypeZonePanel();
         this.hideTreePanel();
         this.hidePathPanel();
+        this.hideWaterPanel();
         this.setActiveToolButton('fill');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -598,6 +628,7 @@ export default class Editor {
         this.setActiveToolButton('typeZone');
         this.hideTreePanel();
         this.hidePathPanel();
+        this.hideWaterPanel();
         this.showTypeZonePanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones
     });
@@ -608,6 +639,7 @@ export default class Editor {
         this.setActiveToolButton('tree');
         this.hideTypeZonePanel();
         this.hidePathPanel();
+        this.hideWaterPanel();
         this.showTreePanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones tree
     });
@@ -618,8 +650,20 @@ export default class Editor {
         this.setActiveToolButton('path');
         this.hideTypeZonePanel();
         this.hideTreePanel();
+        this.hideWaterPanel();
         this.showPathPanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones path
+    });
+
+    this.toolButtons.water.addEventListener('click', () => {
+        this.map.tool = 'water';
+        this.tileSelector.setTool('water');
+        this.setActiveToolButton('water');
+        this.hideTypeZonePanel();
+        this.hideTreePanel();
+        this.hidePathPanel();
+        this.showWaterPanel();
+        this.tileSelector.draw(); // Forcer le rendu pour afficher les zones water
     });
 
     // --- Événements du panneau des zones de type ---
@@ -670,6 +714,15 @@ export default class Editor {
       if (li) {
         const zoneId = li.dataset.zoneId;
         this.selectPathZone(zoneId);
+      }
+    });
+
+    // --- Événements du panneau de l'eau ---
+    document.getElementById('water-list').addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (li) {
+        const zoneId = li.dataset.zoneId;
+        this.selectWaterZone(zoneId);
       }
     });
 
@@ -732,6 +785,72 @@ export default class Editor {
    */
   hidePathPanel() {
     document.getElementById('path-panel').style.display = 'none';
+  }
+
+  /**
+   * Affiche le panneau de l'eau et masque les autres panneaux
+   */
+  showWaterPanel() {
+    this.hideTypeZonePanel();
+    this.hideTreePanel();
+    this.hidePathPanel();
+    document.getElementById('water-panel').style.display = 'block';
+    this.renderWaterPanel(); // Mettre à jour la liste de l'eau
+  }
+
+  /**
+   * Masque le panneau de l'eau
+   */
+  hideWaterPanel() {
+    document.getElementById('water-panel').style.display = 'none';
+  }
+
+  /**
+   * Met à jour l'affichage du panneau de l'eau.
+   */
+  renderWaterPanel() {
+    const waterList = document.getElementById('water-list');
+    const noWaterMessage = document.getElementById('no-water-message');
+    
+    // Récupérer les zones de type "water"
+    const waterZones = this.typeZoneManager.getZonesByCategory('water');
+    
+    waterList.innerHTML = '';
+    
+    if (waterZones.length === 0) {
+      waterList.style.display = 'none';
+      noWaterMessage.style.display = 'block';
+      return;
+    }
+    
+    waterList.style.display = 'block';
+    noWaterMessage.style.display = 'none';
+    
+    waterZones.forEach(zone => {
+      const li = document.createElement('li');
+      li.dataset.zoneId = zone.id;
+      
+      if (this.selectedWaterZone && this.selectedWaterZone.id === zone.id) {
+        li.classList.add('selected');
+      }
+      
+      const waterInfo = document.createElement('div');
+      waterInfo.className = 'water-info';
+      
+      const waterName = document.createElement('div');
+      waterName.className = 'water-name';
+      waterName.textContent = zone.name;
+      
+      const waterDetails = document.createElement('div');
+      waterDetails.className = 'water-details';
+      waterDetails.textContent = `${zone.bounds.width}×${zone.bounds.height} tiles`;
+      
+      waterInfo.appendChild(waterName);
+      waterInfo.appendChild(waterDetails);
+      li.appendChild(waterInfo);
+      
+      waterList.appendChild(li);
+    });
   }
 
   /**
@@ -834,6 +953,18 @@ export default class Editor {
   }
 
   /**
+   * Sélectionne une zone d'eau
+   */
+  selectWaterZone(zoneId) {
+    const zone = this.typeZoneManager.zones.find(z => z.id === zoneId);
+    if (zone && zone.category === 'water') {
+      this.selectedWaterZone = zone;
+      this.renderWaterPanel(); // Mettre à jour l'affichage
+      this.tileSelector.draw(); // Mettre à jour l'affichage des zones water
+    }
+  }
+
+  /**
    * Sélectionne une zone d'arbre
    */
   selectTreeZone(zoneId) {
@@ -881,6 +1012,8 @@ export default class Editor {
           this.renderTreePanel();
         } else if (zone.category === 'path') {
           this.renderPathPanel();
+        } else if (zone.category === 'water') {
+          this.renderWaterPanel();
         }
         this.cancelZoneCreation();
         this.tileSelector.draw(); // Mettre à jour l'affichage
@@ -972,6 +1105,11 @@ export default class Editor {
     // Afficher l'aperçu de l'arbre en mode tree seulement si la souris est sur le canvas
     if (this.map.tool === 'tree' && this.selectedTreeZone && this.isMouseOverCanvas) {
       this.drawTreePreview();
+    }
+
+    // Afficher l'aperçu du rectangle d'eau en mode water
+    if (this.map.tool === 'water' && this.selectedWaterZone && this.waterStartPosition && this.waterCurrentPosition && this.isMouseOverCanvas) {
+      this.drawWaterRectanglePreview();
     }
 
     this.context.restore();
@@ -1300,6 +1438,193 @@ export default class Editor {
     // Sauvegarder les changements
     this.map.save('Place Tree');
     this.renderHistoryPanel();
+  }
+
+  /**
+   * Dessine l'aperçu du rectangle d'eau
+   */
+  drawWaterRectanglePreview() {
+    if (!this.selectedWaterZone || !this.waterStartPosition || !this.waterCurrentPosition) return;
+
+    // Calculer les limites du rectangle
+    const minX = Math.min(this.waterStartPosition.x, this.waterCurrentPosition.x);
+    const maxX = Math.max(this.waterStartPosition.x, this.waterCurrentPosition.x);
+    const minY = Math.min(this.waterStartPosition.y, this.waterCurrentPosition.y);
+    const maxY = Math.max(this.waterStartPosition.y, this.waterCurrentPosition.y);
+
+    this.context.save();
+    this.context.globalAlpha = 0.5; // Semi-transparent
+    this.context.fillStyle = 'rgba(0, 100, 255, 0.3)'; // Bleu eau
+
+    // Dessiner le rectangle d'aperçu
+    const rectX = minX * this.map.tileset.tileSize;
+    const rectY = minY * this.map.tileset.tileSize;
+    const rectWidth = (maxX - minX + 1) * this.map.tileset.tileSize;
+    const rectHeight = (maxY - minY + 1) * this.map.tileset.tileSize;
+
+    this.context.fillRect(rectX, rectY, rectWidth, rectHeight);
+
+    // Contour plus visible
+    this.context.globalAlpha = 0.8;
+    this.context.strokeStyle = 'rgba(0, 100, 255, 0.8)';
+    this.context.lineWidth = 2;
+    this.context.strokeRect(rectX, rectY, rectWidth, rectHeight);
+
+    this.context.restore();
+  }
+
+  /**
+   * Dessine le rectangle d'eau final avec les transitions
+   */
+  drawWaterRectangle() {
+    if (!this.selectedWaterZone || !this.waterStartPosition || !this.waterCurrentPosition) return;
+
+    // Calculer les limites du rectangle
+    const minX = Math.min(this.waterStartPosition.x, this.waterCurrentPosition.x);
+    const maxX = Math.max(this.waterStartPosition.x, this.waterCurrentPosition.x);
+    const minY = Math.min(this.waterStartPosition.y, this.waterCurrentPosition.y);
+    const maxY = Math.max(this.waterStartPosition.y, this.waterCurrentPosition.y);
+
+    // Créer un Set des positions d'eau
+    const waterPositions = new Set();
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        waterPositions.add(`${x},${y}`);
+      }
+    }
+
+    // D'abord, placer toutes les tiles W07 (eau pleine) à l'intérieur
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        this.placeTileFromWaterZone(x, y, 6); // W07 - eau complète
+      }
+    }
+
+    // Ensuite, appliquer les transitions autour du rectangle
+    this.applyWaterTransitionsAroundRectangle(minX, maxX, minY, maxY, waterPositions);
+
+    this.map.save('Draw Water Rectangle');
+    this.renderHistoryPanel();
+  }
+
+  /**
+   * Applique les transitions autour du rectangle d'eau
+   */
+  applyWaterTransitionsAroundRectangle(minX, maxX, minY, maxY, waterPositions) {
+    // Analyser une zone élargie autour du rectangle pour les transitions
+    for (let x = minX - 1; x <= maxX + 1; x++) {
+      for (let y = minY - 1; y <= maxY + 1; y++) {
+        // Skip les positions à l'intérieur du rectangle (déjà traitées)
+        if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+          continue;
+        }
+        
+        // Calculer la tile appropriée pour cette position
+        const tileIndex = this.calculateWaterTransitionTile(x, y, waterPositions);
+        if (tileIndex !== null) {
+          this.placeTileFromWaterZone(x, y, tileIndex);
+        }
+      }
+    }
+  }
+
+
+  /**
+   * Calcule la tile de transition appropriée selon les règles de CLAUDE.md (adaptée pour l'eau)
+   */
+  calculateWaterTransitionTile(x, y, waterPositions) {
+    const isWater = waterPositions.has(`${x},${y}`);
+    
+    // Vérifier les 8 voisins
+    const neighbors = {
+      topLeft: waterPositions.has(`${x-1},${y-1}`),
+      top: waterPositions.has(`${x},${y-1}`),
+      topRight: waterPositions.has(`${x+1},${y-1}`),
+      left: waterPositions.has(`${x-1},${y}`),
+      right: waterPositions.has(`${x+1},${y}`),
+      bottomLeft: waterPositions.has(`${x-1},${y+1}`),
+      bottom: waterPositions.has(`${x},${y+1}`),
+      bottomRight: waterPositions.has(`${x+1},${y+1}`)
+    };
+
+    // Si c'est de l'eau, retourner W07 (index 6)
+    if (isWater) {
+      return 6; // W07 - tile de base eau
+    }
+
+    // Sinon, calculer la tile de transition selon les patterns
+    return this.getWaterTransitionTileFromNeighbors(neighbors);
+  }
+
+  /**
+   * Détermine la tile de transition basée sur les voisins selon CLAUDE.md (adaptée pour l'eau)
+   */
+  getWaterTransitionTileFromNeighbors(neighbors) {
+    // Utiliser la même logique que pour les chemins mais pour l'eau
+    const hasTop = neighbors.top;
+    const hasBottom = neighbors.bottom;
+    const hasLeft = neighbors.left;
+    const hasRight = neighbors.right;
+    
+    // Coins intérieurs prioritaires
+    if (hasLeft && hasBottom && !hasTop && !hasRight) return 4; // W05
+    if (hasRight && hasBottom && !hasTop && !hasLeft) return 3; // W04
+    if (hasLeft && hasTop && !hasBottom && !hasRight) return 9; // W10
+    if (hasRight && hasTop && !hasBottom && !hasLeft) return 8; // W09
+    
+    // Edges
+    if (hasBottom && !hasTop) {
+      if (hasLeft && !hasRight) return 2; // W03
+      if (hasRight && !hasLeft) return 0; // W01
+      return 1; // W02
+    }
+    
+    if (hasTop && !hasBottom) {
+      if (hasLeft && !hasRight) return 12; // W13
+      if (hasRight && !hasLeft) return 10; // W11
+      return 11; // W12
+    }
+    
+    if (hasRight && !hasLeft) {
+      return 5; // W06
+    }
+    
+    if (hasLeft && !hasRight) {
+      return 7; // W08
+    }
+    
+    // Coins diagonaux
+    if (!hasTop && !hasBottom && !hasLeft && !hasRight) {
+      if (neighbors.bottomRight) return 0; // W01
+      if (neighbors.bottomLeft) return 2; // W03
+      if (neighbors.topRight) return 10; // W11
+      if (neighbors.topLeft) return 12; // W13
+    }
+
+    return null;
+  }
+
+  /**
+   * Place une tile spécifique de la zone d'eau
+   */
+  placeTileFromWaterZone(gridX, gridY, waterTileIndex) {
+    if (!this.selectedWaterZone) return;
+    
+    // La zone d'eau doit être arrangée en grille 5x3 (W01-W15)
+    // Calculer les coordonnées dans la zone basées sur l'index
+    const tilesPerRow = 5; // W01-W05, W06-W10, W11-W15
+    const tileRow = Math.floor(waterTileIndex / tilesPerRow);
+    const tileCol = waterTileIndex % tilesPerRow;
+    
+    // Coordonnées de la tile dans la zone
+    const tileInZoneX = this.selectedWaterZone.bounds.startX + tileCol;
+    const tileInZoneY = this.selectedWaterZone.bounds.startY + tileRow;
+    
+    // Calculer l'index de cette tile dans le tileset
+    const tileIndex = this.map.tileset.getTileIndex(tileInZoneX, tileInZoneY);
+    
+    // Placer la tile sur la carte
+    this.map.setTile(gridX, gridY, tileIndex);
   }
 
   /**
