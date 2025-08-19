@@ -114,6 +114,8 @@ export class EditorMap {
   }
 
   save() {
+    const MAX_HISTORY_ENTRIES = 50; // Limite à 50 entrées dans l'historique
+    
     let historyString = localStorage.getItem('history');
     if (!historyString) {
         historyString = '[]';
@@ -139,7 +141,31 @@ export class EditorMap {
 
     history.forEach((entry) => entry.current = false);
     history.push(data);
-    localStorage.setItem('history', JSON.stringify(history));
+    
+    // Rotation de l'historique : supprimer les entrées les plus anciennes si on dépasse la limite
+    if (history.length > MAX_HISTORY_ENTRIES) {
+      const excessEntries = history.length - MAX_HISTORY_ENTRIES;
+      history = history.slice(excessEntries);
+    }
+    
+    try {
+      localStorage.setItem('history', JSON.stringify(history));
+    } catch (e) {
+      if (e.name === 'QuotaExceededError') {
+        // Si on manque encore d'espace, réduire davantage l'historique
+        console.warn('localStorage quota exceeded, reducing history size');
+        const reducedHistory = history.slice(-Math.floor(MAX_HISTORY_ENTRIES / 2));
+        try {
+          localStorage.setItem('history', JSON.stringify(reducedHistory));
+        } catch (e2) {
+          console.error('Cannot save history, localStorage full:', e2);
+          // En dernier recours, vider l'historique
+          localStorage.removeItem('history');
+        }
+      } else {
+        console.error('Error saving history:', e);
+      }
+    }
   }
 
   load() {
