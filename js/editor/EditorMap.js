@@ -113,7 +113,7 @@ export class EditorMap {
     }
   }
 
-  save() {
+  save(actionDescription = 'Edit') {
     const MAX_HISTORY_ENTRIES = 50; // Limite à 50 entrées dans l'historique
     
     let historyString = localStorage.getItem('history');
@@ -134,6 +134,8 @@ export class EditorMap {
     const data = {
       layers: this.layers,
       current: true,
+      timestamp: new Date().toLocaleTimeString(),
+      action: actionDescription,
     };
     const currentIndex = history.findIndex((entry) => entry.current);
     history = history.slice(0, currentIndex + 1);
@@ -210,6 +212,40 @@ export class EditorMap {
         this.layers = nextState.layers;
         localStorage.setItem('history', JSON.stringify(history));
     }
+  }
+
+  /**
+   * Récupère l'historique complet pour affichage
+   */
+  getHistory() {
+    const savedHistory = localStorage.getItem('history');
+    if (!savedHistory) return [];
+    
+    try {
+        const history = JSON.parse(savedHistory);
+        return Array.isArray(history) ? history : [];
+    } catch (e) {
+        return [];
+    }
+  }
+
+  /**
+   * Navigue vers un état spécifique de l'historique
+   */
+  navigateToHistoryStep(stepIndex) {
+    let history = this.getHistory();
+    if (stepIndex >= 0 && stepIndex < history.length) {
+        // Marquer tous les états comme non-courants
+        history.forEach(entry => entry.current = false);
+        // Marquer le nouvel état comme courant
+        history[stepIndex].current = true;
+        // Charger les layers de cet état
+        this.layers = history[stepIndex].layers;
+        // Sauvegarder les changements
+        localStorage.setItem('history', JSON.stringify(history));
+        return true;
+    }
+    return false;
   }
 
   // --- Méthodes des outils ---

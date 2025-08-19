@@ -386,7 +386,8 @@ export default class Editor {
               this.placeTileFromPathZone(gridCoords.x, gridCoords.y, 6); // C07
               // Appliquer les transitions autour de cette tile
               this.applyTransitionsAroundPoint(gridCoords.x, gridCoords.y, new Set([`${gridCoords.x},${gridCoords.y}`]));
-              this.map.save();
+              this.map.save('Place Path Tile');
+              this.renderHistoryPanel();
             } else {
               // Sinon, on finalise simplement le chemin déjà dessiné
               this.finishPath();
@@ -395,8 +396,10 @@ export default class Editor {
           } else {
             this.finishPath();
           }
-        } else {
+        } else if (this.map.tool !== 'tree') {
+          // Ne pas sauvegarder pour l'outil tree car placeTree() le fait déjà
           this.map.save();
+          this.renderHistoryPanel();
         }
       }
       if (isCameraDragging) {
@@ -418,8 +421,9 @@ export default class Editor {
     // --- Événements de l'interface des calques ---
     document.getElementById('add-layer').addEventListener('click', () => {
       this.map.addLayer();
-      this.map.save();
+      this.map.save('Add Layer');
       this.renderLayerList();
+      this.renderHistoryPanel();
     });
 
     const layerList = document.getElementById('layer-list');
@@ -482,6 +486,7 @@ export default class Editor {
               // 3. On sauvegarde et on met à jour les vues
               this.map.save();
               this.renderLayerList();
+              this.renderHistoryPanel();
               this.draw(); // Redessin immédiat du canevas
           }
       }
@@ -524,6 +529,7 @@ export default class Editor {
           if (newName && newName !== originalName) {
             this.map.renameLayer(index, newName);
             this.map.save();
+            this.renderHistoryPanel();
           }
         }
         // Si la touche est 'Escape', on ne fait rien, la liste est juste redessinée ci-dessous
@@ -546,11 +552,13 @@ export default class Editor {
       this.camera.x = 0;
       this.camera.y = 0;
     });
-    document.querySelector('#undo').addEventListener('click', () => { this.map.undo(); this.draw(); });
-    document.querySelector('#redo').addEventListener('click', () => { this.map.redo(); this.draw(); });
+    document.querySelector('#undo').addEventListener('click', () => { this.map.undo(); this.draw(); this.renderHistoryPanel(); });
+    document.querySelector('#redo').addEventListener('click', () => { this.map.redo(); this.draw(); this.renderHistoryPanel(); });
+    document.querySelector('#history').addEventListener('click', () => { this.toggleHistoryPanel(); });
     document.querySelector('#clear').addEventListener('click', () => {
       this.map.clear();
       this.draw();
+      this.renderHistoryPanel();
     });
 
     // On utilise la nouvelle méthode pour gérer le changement d'outil et de style
@@ -664,6 +672,19 @@ export default class Editor {
         this.selectPathZone(zoneId);
       }
     });
+
+    // --- Événements du panneau d'historique ---
+    document.getElementById('history-list').addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (li && li.dataset.stepIndex !== undefined) {
+        const stepIndex = parseInt(li.dataset.stepIndex, 10);
+        if (this.map.navigateToHistoryStep(stepIndex)) {
+          this.renderHistoryPanel(); // Mettre à jour l'affichage
+          this.renderLayerList(); // Mettre à jour l'affichage des calques
+          this.draw(); // Redessiner la carte
+        }
+      }
+    });
   }
 
   /**
@@ -711,6 +732,93 @@ export default class Editor {
    */
   hidePathPanel() {
     document.getElementById('path-panel').style.display = 'none';
+  }
+
+  /**
+   * Bascule l'affichage du panneau d'historique
+   */
+  toggleHistoryPanel() {
+    const historyPanel = document.getElementById('history-panel');
+    if (historyPanel.style.display === 'none') {
+      this.showHistoryPanel();
+    } else {
+      this.hideHistoryPanel();
+    }
+  }
+
+  /**
+   * Affiche le panneau d'historique
+   */
+  showHistoryPanel() {
+    document.getElementById('history-panel').style.display = 'block';
+    this.renderHistoryPanel();
+  }
+
+  /**
+   * Masque le panneau d'historique
+   */
+  hideHistoryPanel() {
+    document.getElementById('history-panel').style.display = 'none';
+  }
+
+  /**
+   * Met à jour l'affichage du panneau d'historique
+   */
+  renderHistoryPanel() {
+    const historyPanel = document.getElementById('history-panel');
+    // Optimisation : ne pas mettre à jour si le panneau n'est pas visible
+    if (historyPanel.style.display === 'none') {
+      return;
+    }
+    
+    const historyList = document.getElementById('history-list');
+    const history = this.map.getHistory();
+    
+    historyList.innerHTML = '';
+    
+    if (history.length === 0) {
+      const li = document.createElement('li');
+      li.style.textAlign = 'center';
+      li.style.color = '#999';
+      li.style.fontStyle = 'italic';
+      li.textContent = 'No history available';
+      li.style.cursor = 'default';
+      historyList.appendChild(li);
+      return;
+    }
+
+    const currentIndex = history.findIndex(entry => entry.current);
+    
+    // Inverser l'ordre pour avoir le plus récent en haut
+    history.slice().reverse().forEach((step, reverseIndex) => {
+      const index = history.length - 1 - reverseIndex;
+      const li = document.createElement('li');
+      li.dataset.stepIndex = index;
+      
+      // Ajouter les classes CSS appropriées
+      if (index === currentIndex) {
+        li.classList.add('current');
+      } else if (index > currentIndex) {
+        li.classList.add('future');
+      }
+      
+      const stepDiv = document.createElement('div');
+      stepDiv.className = 'history-step';
+      
+      const actionDiv = document.createElement('div');
+      actionDiv.className = 'history-action';
+      actionDiv.textContent = step.action || 'Edit';
+      
+      const timestampDiv = document.createElement('div');
+      timestampDiv.className = 'history-timestamp';
+      timestampDiv.textContent = step.timestamp || 'Unknown time';
+      
+      stepDiv.appendChild(actionDiv);
+      stepDiv.appendChild(timestampDiv);
+      li.appendChild(stepDiv);
+      
+      historyList.appendChild(li);
+    });
   }
 
   /**
@@ -935,6 +1043,7 @@ export default class Editor {
     this.pathDrawing = [];
     this.pathTileCalculator.clearMarkedPositions();
     this.map.save();
+    this.renderHistoryPanel();
   }
 
   updatePathAndNeighbors() {
@@ -1189,7 +1298,8 @@ export default class Editor {
     });
 
     // Sauvegarder les changements
-    this.map.save();
+    this.map.save('Place Tree');
+    this.renderHistoryPanel();
   }
 
   /**

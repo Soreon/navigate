@@ -459,3 +459,73 @@ body[data-tool="move"] #canvas:hover{
   padding: 20px;
   text-align: center;
 }
+
+/* Styles pour le panneau d'historique */
+#history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+#history-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  font-size: 11px;
+}
+
+#history-list li:last-child {
+  border-bottom: none;
+}
+
+#history-list li:hover {
+  background-color: #e6f2ff;
+}
+
+#history-list li.current {
+  background-color: #cce5ff;
+  font-weight: bold;
+}
+
+#history-list li.future {
+  opacity: 0.6;
+  color: #666;
+}
+
+.history-step {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.history-action {
+  font-weight: bold;
+  margin-bottom: 1px;
+}
+
+.history-timestamp {
+  font-size: 9px;
+  color: #999;
+}
+
+#history-info {
+  background-color: #f0f8ff;
+  border: 1px solid #b3d9ff;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+#history-info p {
+  margin: 0;
+  color: #0066cc;
+  font-style: italic;
+}
