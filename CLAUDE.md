@@ -2,72 +2,111 @@
 Partons du principe que le fond de la map est forcément de type "herbe". On le note H.
 
 Quand on passe en mode dessin de chemin, on doit selectionner 15 tiles de type chemin. 
-Ces 15 tiles représentent les transistions entre le type "herbe" (H) et le type "chemin" (C). 
+Ces 15 tiles représentent les transistions entre le type "herbe" et le type "chemin". 
 On les note C01, C02, ..., C15.
 Elles sont arrangées comme ceci :
 C01 C02 C03 C04 C05
 C06 C07 C08 C09 C10
 C11 C12 C13 C14 C15
 
-Imaginons que chaque tile de chemin (C) soit subdivisée en 4 parties.
-Alors on peut les représenter comme suit (avec H pour herbe et C pour chemin)
+C07 est la tile de base de type chemin
 
-C01= (Coin de terre en bas à droite)
-H H
-H C
+selon comment sont placées les tiles de chemin, on utilisera des tiles de transitions particulières (C01 à C06 et C08 à C15) pour créer des transitions fluides entre l'herbe et le chemin.
 
-C02= (Terre en bas)
-H H
-C C 
+Quand on est en mode de dessin de chemin, on ne dessin que des tiles C07 pendant le déplacement de la souris.
 
-C03= (Coin de terre en bas à gauche)
-H H
-C H
+Une fois qu'on a terminé de dessiner le chemin, on doit analyser les tiles de chemin et appliquer les transitions appropriées.
 
-C04= (Coin d'herbe en haut à gauche)
-H C
-C C
+Par exemple si on ne vennait à modifier qu'une case , on aurait dans le cas suivant :
+___ ___ ___
+___ C07 ___
+___ ___ ___
+Après le laché de clic 
+C01 C02 C03
+C06 C07 C08
+C11 C12 C13
 
-C05= (Coin d'herbe en haut à droite)
-C H
-C C
+Si on considère une cellule avec une tile C07, alors on doit vérifier les 8 cases autour.
 
-C06= (Terre à droite)
-H C
-H C
+C07
+___
 
-C07= (Chemin)
-C C
-C C 
 
-C08= (Terre à gauche)
-C H
-C H
+___
+C07
 
-C09= (Coin d'herbe en bas à gauche)
-C C 
-H C
 
-C10= (Coin d'herbe en bas à droite)
-C C
-C H
+___ C07
 
-C11= (Coin de terre en haut à droite)
-H C 
-H H
 
-C12= (Terre en haut)
-C C 
-H H
+C07 ___
 
-C13= (Coin de terre en haut à gauche)
-C H
-H H 
 
-C14= (Chemin alternatif 1)
-C C
-C C 
+C07 ___
+___ ___
 
-C15= (Chemin alternatif 2)
-C C
-C C 
+
+___ C07
+___ ___
+
+
+___ ___
+C07 ___
+
+
+___ ___
+___ C07
+
+
+
+Ce qui donne les transitions suivantes :
+C07 C08
+C12 C13
+
+
+C06 C07
+C11 C12
+
+
+C07
+C12
+       
+
+C01 C02
+C06 C07
+
+
+C06 C07
+
+
+C07 C07
+C09 C07
+       
+
+C02 C03
+C07 C08
+
+
+C07 C08
+
+
+C07 C07
+C07 C10
+       
+
+C02
+C07
+
+
+C07 C05
+C07 C07
+
+
+C04 C07
+C07 C07
+
+
+
+
+
+

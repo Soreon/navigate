@@ -923,8 +923,8 @@ export default class Editor {
       return;
     }
 
-    // Mettre à jour les tiles du chemin et leurs voisins
-    this.updatePathAndNeighbors();
+    // Appliquer les transitions appropriées selon CLAUDE.md
+    this.applyPathTransitions();
 
     // Nettoyer et sauvegarder
     this.pathDrawing = [];
@@ -984,6 +984,131 @@ export default class Editor {
     if (this.pathTileCalculator.isMarkedAsPath(gridX, gridY)) {
       this.placeTileFromPathZone(gridX, gridY, 6); // C07 - chemin complet
     }
+  }
+
+  /**
+   * Applique les transitions de chemin selon les règles de CLAUDE.md
+   */
+  applyPathTransitions() {
+    if (!this.selectedPathZone || this.pathDrawing.length === 0) return;
+
+    // Créer un Set des positions de chemin pour optimiser les vérifications
+    const pathPositions = new Set();
+    this.pathDrawing.forEach(point => {
+      pathPositions.add(`${point.x},${point.y}`);
+    });
+
+    // Analyser chaque position de chemin et ses voisins pour appliquer les transitions
+    this.pathDrawing.forEach(point => {
+      this.applyTransitionsAroundPoint(point.x, point.y, pathPositions);
+    });
+  }
+
+  /**
+   * Applique les transitions autour d'un point selon les règles de CLAUDE.md
+   */
+  applyTransitionsAroundPoint(centerX, centerY, pathPositions) {
+    // Analyser une zone 3x3 autour du point central
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const x = centerX + dx;
+        const y = centerY + dy;
+        
+        // Calculer la tile appropriée pour cette position
+        const tileIndex = this.calculateTransitionTile(x, y, pathPositions);
+        if (tileIndex !== null) {
+          this.placeTileFromPathZone(x, y, tileIndex);
+        }
+      }
+    }
+  }
+
+  /**
+   * Calcule la tile de transition appropriée selon les règles de CLAUDE.md
+   */
+  calculateTransitionTile(x, y, pathPositions) {
+    const isPath = pathPositions.has(`${x},${y}`);
+    
+    // Vérifier les 8 voisins
+    const neighbors = {
+      topLeft: pathPositions.has(`${x-1},${y-1}`),
+      top: pathPositions.has(`${x},${y-1}`),
+      topRight: pathPositions.has(`${x+1},${y-1}`),
+      left: pathPositions.has(`${x-1},${y}`),
+      right: pathPositions.has(`${x+1},${y}`),
+      bottomLeft: pathPositions.has(`${x-1},${y+1}`),
+      bottom: pathPositions.has(`${x},${y+1}`),
+      bottomRight: pathPositions.has(`${x+1},${y+1}`)
+    };
+
+    // Si c'est un chemin, retourner C07 (index 6)
+    if (isPath) {
+      return 6; // C07 - tile de base chemin
+    }
+
+    // Sinon, calculer la tile de transition selon les patterns
+    return this.getTransitionTileFromNeighbors(neighbors);
+  }
+
+  /**
+   * Détermine la tile de transition basée sur les voisins selon CLAUDE.md
+   */
+  getTransitionTileFromNeighbors(neighbors) {
+    // Selon CLAUDE.md et l'exemple fourni, nous devons créer un pattern 3x3 autour du chemin
+    // L'arrangement des tiles est :
+    // C01 C02 C03
+    // C06 C07 C08  
+    // C11 C12 C13
+    
+    // Compter les voisins pour déterminer la position relative
+    const hasTop = neighbors.top;
+    const hasBottom = neighbors.bottom;
+    const hasLeft = neighbors.left;
+    const hasRight = neighbors.right;
+    
+    // Position au-dessus du chemin (ligne du haut)
+    if (hasBottom && !hasTop) {
+      if (hasLeft && !hasRight) return 2; // C03 - coin haut-droite
+      if (hasRight && !hasLeft) return 0; // C01 - coin haut-gauche
+      if (hasLeft && hasRight) return 1; // C02 - milieu haut
+      if (!hasLeft && !hasRight) return 1; // C02 - milieu haut par défaut
+    }
+    
+    // Position en dessous du chemin (ligne du bas)  
+    if (hasTop && !hasBottom) {
+      if (hasLeft && !hasRight) return 12; // C13 - coin bas-droite
+      if (hasRight && !hasLeft) return 10; // C11 - coin bas-gauche
+      if (hasLeft && hasRight) return 11; // C12 - milieu bas
+      if (!hasLeft && !hasRight) return 11; // C12 - milieu bas par défaut
+    }
+    
+    // Position à gauche du chemin (colonne de gauche)
+    if (hasRight && !hasLeft) {
+      if (hasTop && !hasBottom) return 0; // C01 - coin haut-gauche
+      if (hasBottom && !hasTop) return 10; // C11 - coin bas-gauche  
+      if (hasTop && hasBottom) return 5; // C06 - milieu gauche
+      if (!hasTop && !hasBottom) return 5; // C06 - milieu gauche par défaut
+    }
+    
+    // Position à droite du chemin (colonne de droite)
+    if (hasLeft && !hasRight) {
+      if (hasTop && !hasBottom) return 2; // C03 - coin haut-droite
+      if (hasBottom && !hasTop) return 12; // C13 - coin bas-droite
+      if (hasTop && hasBottom) return 7; // C08 - milieu droite  
+      if (!hasTop && !hasBottom) return 7; // C08 - milieu droite par défaut
+    }
+    
+    // Coins diagonaux (positions où il n'y a pas de chemin adjacent direct)
+    if (!hasTop && !hasBottom && !hasLeft && !hasRight) {
+      // Vérifier les diagonales pour déterminer la position du coin
+      if (neighbors.bottomRight) return 0; // C01 - coin haut-gauche
+      if (neighbors.bottomLeft) return 2; // C03 - coin haut-droite
+      if (neighbors.topRight) return 10; // C11 - coin bas-gauche
+      if (neighbors.topLeft) return 12; // C13 - coin bas-droite
+    }
+
+    // Si aucun pattern reconnu, pas de transition
+    return null;
   }
 
   /**
