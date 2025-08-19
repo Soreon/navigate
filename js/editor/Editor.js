@@ -266,12 +266,21 @@ export default class Editor {
       const li = document.createElement('li');
       li.dataset.index = i;
 
-      // Le calque Background (index 0) n'est pas déplaçable
+      // Le calque Background (index 0) n'est pas déplaçable et n'a pas de bouton de visibilité
       if (i > 0) {
         li.draggable = true;
         const handle = document.createElement('i');
         handle.className = 'fa-solid fa-grip-vertical drag-handle';
         li.appendChild(handle);
+        
+        // Bouton de visibilité (œil)
+        const visibilityBtn = document.createElement('i');
+        visibilityBtn.className = layer.visible 
+          ? 'fa-solid fa-eye visibility-btn visible' 
+          : 'fa-solid fa-eye-slash visibility-btn hidden';
+        visibilityBtn.dataset.layerIndex = i;
+        visibilityBtn.title = layer.visible ? 'Hide layer' : 'Show layer';
+        li.appendChild(visibilityBtn);
       }
 
       const name = document.createElement('span');
@@ -456,6 +465,16 @@ export default class Editor {
     const layerList = document.getElementById('layer-list');
 
     layerList.addEventListener('click', (e) => {
+      // Gérer les clics sur les boutons de visibilité
+      if (e.target.classList.contains('visibility-btn')) {
+        e.stopPropagation(); // Empêcher la sélection du calque
+        const layerIndex = parseInt(e.target.dataset.layerIndex, 10);
+        this.map.toggleLayerVisibility(layerIndex);
+        this.renderLayerList(); // Mettre à jour l'affichage
+        this.draw(); // Redessiner la carte
+        return;
+      }
+
       // On annule tout minuteur précédent au cas où l'utilisateur clique rapidement plusieurs fois
       clearTimeout(this.clickTimer);
 

@@ -136,13 +136,38 @@ body[data-tool="move"] #canvas:hover{
     background-color: #f0f0f0;
 }
 .drag-handle {
-    margin-right: 10px;
+    margin-right: 8px;
     cursor: grab;
     color: #aaa;
 }
 
 .drag-handle:active {
     cursor: grabbing;
+}
+
+.visibility-btn {
+    margin-right: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    width: 16px;
+    text-align: center;
+    transition: color 0.2s ease;
+}
+
+.visibility-btn.visible {
+    color: #007bff;
+}
+
+.visibility-btn.hidden {
+    color: #ccc;
+}
+
+.visibility-btn:hover.visible {
+    color: #0056b3;
+}
+
+.visibility-btn:hover.hidden {
+    color: #999;
 }
 
 /* Style pour l'élément pendant qu'il est déplacé */

@@ -11,7 +11,7 @@ export class EditorMap {
 
     // --- Structure de données des calques ---
     this.layers = [
-      { name: 'Background', tiles: {} }, // Le calque 0 est le fond, non modifiable
+      { name: 'Background', tiles: {}, visible: true }, // Le calque 0 est le fond, non modifiable
     ];
     this.activeLayerIndex = 0; // Le calque actif par défaut
 
@@ -36,6 +36,12 @@ export class EditorMap {
     // pour que les calques supérieurs se dessinent par-dessus les inférieurs
     for (let i = 0; i < this.layers.length; i++) {
       const layer = this.layers[i];
+      
+      // Skip les calques invisibles (sauf le Background qui doit toujours être visible)
+      if (!layer.visible && i !== 0) {
+        continue;
+      }
+      
       for (const tileKey in layer.tiles) {
         const [x, y] = tileKey.split(',').map(coord => parseInt(coord.slice(1)));
         const tileIndex = layer.tiles[tileKey];
@@ -66,7 +72,7 @@ export class EditorMap {
   // --- Nouvelles méthodes de gestion des calques ---
 
   addLayer(name = `Layer ${this.layers.length}`) {
-    this.layers.push({ name, tiles: {} });
+    this.layers.push({ name, tiles: {}, visible: true });
     // On définit le nouveau calque comme étant l'actif
     this.activeLayerIndex = this.layers.length - 1;
   }
@@ -84,6 +90,16 @@ export class EditorMap {
     const layer = this.layers[layerIndex];
     if (layer && newName.trim()) {
       layer.name = newName.trim();
+    }
+  }
+
+  toggleLayerVisibility(layerIndex) {
+    // On ne peut pas masquer le calque Background
+    if (layerIndex === 0) return;
+
+    const layer = this.layers[layerIndex];
+    if (layer) {
+      layer.visible = !layer.visible;
     }
   }
 
@@ -181,6 +197,13 @@ export class EditorMap {
         if (!data || !Array.isArray(data.layers)) return;
         
         this.layers = data.layers;
+        
+        // S'assurer que tous les layers ont la propriété visible définie (par défaut true)
+        this.layers.forEach(layer => {
+          if (layer.visible === undefined) {
+            layer.visible = true;
+          }
+        });
     } catch (e) {
         // If history is corrupted, we do nothing and stick to the default layers.
     }
@@ -196,6 +219,14 @@ export class EditorMap {
         history[currentStateIndex].current = false;
         previousState.current = true;
         this.layers = previousState.layers;
+        
+        // S'assurer que tous les layers ont la propriété visible définie (par défaut true)
+        this.layers.forEach(layer => {
+          if (layer.visible === undefined) {
+            layer.visible = true;
+          }
+        });
+        
         localStorage.setItem('history', JSON.stringify(history));
     }
   }
@@ -210,6 +241,14 @@ export class EditorMap {
         history[currentStateIndex].current = false;
         nextState.current = true;
         this.layers = nextState.layers;
+        
+        // S'assurer que tous les layers ont la propriété visible définie (par défaut true)
+        this.layers.forEach(layer => {
+          if (layer.visible === undefined) {
+            layer.visible = true;
+          }
+        });
+        
         localStorage.setItem('history', JSON.stringify(history));
     }
   }
@@ -241,6 +280,14 @@ export class EditorMap {
         history[stepIndex].current = true;
         // Charger les layers de cet état
         this.layers = history[stepIndex].layers;
+        
+        // S'assurer que tous les layers ont la propriété visible définie (par défaut true)
+        this.layers.forEach(layer => {
+          if (layer.visible === undefined) {
+            layer.visible = true;
+          }
+        });
+        
         // Sauvegarder les changements
         localStorage.setItem('history', JSON.stringify(history));
         return true;
