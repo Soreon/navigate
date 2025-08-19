@@ -377,10 +377,12 @@ export default class Editor {
             const isClick = (gridCoords.x === this.pathClickStartPosition.x && 
                            gridCoords.y === this.pathClickStartPosition.y);
             
-            // Si c'était un simple clic, on place juste une tile
+            // Si c'était un simple clic, on place juste une tile mais on applique les transitions
             if (isClick && this.pathDrawing.length <= 1) {
               // Placer une seule tile C07 à la position cliquée
               this.placeTileFromPathZone(gridCoords.x, gridCoords.y, 6); // C07
+              // Appliquer les transitions autour de cette tile
+              this.applyTransitionsAroundPoint(gridCoords.x, gridCoords.y, new Set([`${gridCoords.x},${gridCoords.y}`]));
               this.map.save();
             } else {
               // Sinon, on finalise simplement le chemin déjà dessiné
