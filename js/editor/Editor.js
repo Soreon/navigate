@@ -38,6 +38,13 @@ export default class Editor {
     this.pathTileCalculator = new PathTileCalculator();
     this.tileSelector = new TileSelector(this.map.tileset, this.tilesCanvas, this.typeZoneManager);
     
+    // Configurer le callback pour les changements de sélection
+    this.tileSelector.setOnSelectionChangeCallback(() => {
+      if (this.map.tool === 'fill') {
+        this.updateFillPanel();
+      }
+    });
+    
     // --- Initialisation de la caméra et de l'UI ---
     this.camera = { x: 0, y: 0 };
     this.selectedTreeZone = null;
@@ -49,6 +56,7 @@ export default class Editor {
     this.pathClickStartPosition = null; // Position du clic initial pour détecter clic vs drag
     this.waterStartPosition = null; // Position de début du rectangle d'eau
     this.waterCurrentPosition = null; // Position actuelle de la souris pour l'aperçu du rectangle
+    this.fillProbability = 100; // Probabilité de fill (1-100%)
     
     this.renderLayerList(); // Premier rendu de l'interface des calques
     this.renderTypeZonePanel(); // Premier rendu du panneau des zones de type
@@ -325,11 +333,21 @@ export default class Editor {
         // Autres outils
         if (this.tileSelector.selection.length === 0 && this.map.tool !== 'erase') return;
         
-        const firstSelectedTile = this.tileSelector.selection[0];
-        const tileIndex = firstSelectedTile ? this.tileSelector.tileset.getTileIndex(firstSelectedTile.x, firstSelectedTile.y) : null;
+        // Pour l'outil fill, on passe toutes les tiles sélectionnées; pour les autres, seulement la première
+        let tileIndices;
+        if (this.map.tool === 'fill' && this.tileSelector.selection.length > 0) {
+          // Pour fill, envoyer toutes les tiles sélectionnées
+          tileIndices = this.tileSelector.selection.map(tile => 
+            this.tileSelector.tileset.getTileIndex(tile.x, tile.y)
+          );
+        } else {
+          // Pour les autres outils, utiliser seulement la première tile
+          const firstSelectedTile = this.tileSelector.selection[0];
+          tileIndices = firstSelectedTile ? this.tileSelector.tileset.getTileIndex(firstSelectedTile.x, firstSelectedTile.y) : null;
+        }
         
-        if (tileIndex !== null || this.map.tool === 'erase') {
-          this.map.useTool(mouseX, mouseY, tileIndex, this.camera);
+        if (tileIndices !== null || this.map.tool === 'erase') {
+          this.map.useTool(mouseX, mouseY, tileIndices, this.camera, this.fillProbability);
         }
       }
     };
@@ -615,6 +633,7 @@ export default class Editor {
         this.hideTreePanel();
         this.hidePathPanel();
         this.hideWaterPanel();
+        this.hideFillPanel();
         this.setActiveToolButton('brush');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -626,6 +645,7 @@ export default class Editor {
         this.hideTreePanel();
         this.hidePathPanel();
         this.hideWaterPanel();
+        this.hideFillPanel();
         this.setActiveToolButton('erase');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -637,6 +657,7 @@ export default class Editor {
         this.hideTreePanel();
         this.hidePathPanel();
         this.hideWaterPanel();
+        this.showFillPanel();
         this.setActiveToolButton('fill');
         this.tileSelector.draw(); // Forcer le rendu pour masquer les zones
     });
@@ -648,6 +669,7 @@ export default class Editor {
         this.hideTreePanel();
         this.hidePathPanel();
         this.hideWaterPanel();
+        this.hideFillPanel();
         this.showTypeZonePanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones
     });
@@ -659,6 +681,7 @@ export default class Editor {
         this.hideTypeZonePanel();
         this.hidePathPanel();
         this.hideWaterPanel();
+        this.hideFillPanel();
         this.showTreePanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones tree
     });
@@ -670,6 +693,7 @@ export default class Editor {
         this.hideTypeZonePanel();
         this.hideTreePanel();
         this.hideWaterPanel();
+        this.hideFillPanel();
         this.showPathPanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones path
     });
@@ -681,6 +705,7 @@ export default class Editor {
         this.hideTypeZonePanel();
         this.hideTreePanel();
         this.hidePathPanel();
+        this.hideFillPanel();
         this.showWaterPanel();
         this.tileSelector.draw(); // Forcer le rendu pour afficher les zones water
     });
@@ -757,6 +782,15 @@ export default class Editor {
         }
       }
     });
+
+    // --- Événements du panneau fill ---
+    const fillProbabilitySlider = document.getElementById('fill-probability');
+    const fillProbabilityValue = document.getElementById('fill-probability-value');
+    
+    fillProbabilitySlider.addEventListener('input', (e) => {
+      this.fillProbability = parseInt(e.target.value, 10);
+      fillProbabilityValue.textContent = this.fillProbability;
+    });
   }
 
   /**
@@ -822,6 +856,44 @@ export default class Editor {
    */
   hideWaterPanel() {
     document.getElementById('water-panel').style.display = 'none';
+  }
+
+  /**
+   * Affiche le panneau de l'outil fill
+   */
+  showFillPanel() {
+    document.getElementById('fill-panel').style.display = 'block';
+    this.updateFillPanel();
+  }
+
+  /**
+   * Met à jour l'affichage du panneau de l'outil fill
+   */
+  updateFillPanel() {
+    const selectedTileCountElement = document.getElementById('selected-tile-count');
+    if (selectedTileCountElement) {
+      const tileCount = this.tileSelector.selection.length;
+      selectedTileCountElement.textContent = tileCount;
+      
+      // Changer la couleur selon le nombre de tiles
+      const countContainer = document.getElementById('fill-tile-count');
+      if (tileCount > 1) {
+        countContainer.style.backgroundColor = '#d1f2eb';
+        countContainer.style.borderColor = '#28a745';
+        selectedTileCountElement.style.color = '#28a745';
+      } else {
+        countContainer.style.backgroundColor = '#e8f4fd';
+        countContainer.style.borderColor = '#007bff';
+        selectedTileCountElement.style.color = '#007bff';
+      }
+    }
+  }
+
+  /**
+   * Masque le panneau de l'outil fill
+   */
+  hideFillPanel() {
+    document.getElementById('fill-panel').style.display = 'none';
   }
 
   /**

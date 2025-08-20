@@ -550,6 +550,91 @@ body[data-tool="move"] #canvas:hover{
   text-align: center;
 }
 
+/* Styles pour le panneau de l'outil fill */
+#fill-probability-container {
+  padding: 10px 0;
+}
+
+#fill-probability-container label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+#fill-probability {
+  width: 100%;
+  height: 20px;
+  margin-bottom: 10px;
+  appearance: none;
+  background: #ddd;
+  border-radius: 10px;
+  outline: none;
+  cursor: pointer;
+}
+
+#fill-probability::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #007bff;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#fill-probability::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #007bff;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#fill-probability-value {
+  color: #007bff;
+  font-weight: bold;
+}
+
+#fill-tile-count {
+  background-color: #e8f4fd;
+  border: 1px solid #007bff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin: 8px 0;
+  text-align: center;
+}
+
+#fill-tile-count p {
+  margin: 0;
+  font-size: 12px;
+  color: #007bff;
+  font-weight: bold;
+}
+
+#selected-tile-count {
+  font-size: 14px;
+}
+
+#fill-info {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+#fill-info p {
+  margin: 0;
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+}
+
 /* Styles pour le panneau d'historique */
 #history-list {
   list-style: none;

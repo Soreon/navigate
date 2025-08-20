@@ -338,10 +338,13 @@ export class EditorMap {
     return layer.tiles[`x${x},y${y}`];
   }
 
-  fill(startX, startY, newTileIndex, camera) {
+  fill(startX, startY, tileIndices, camera, probability = 100) {
+    // Gérer à la fois un seul index ou un tableau d'indices
+    const tileIndexArray = Array.isArray(tileIndices) ? tileIndices : [tileIndices];
     const targetTileIndex = this.getTile(startX, startY);
 
-    if (targetTileIndex === newTileIndex) return;
+    // Vérifier si la tile de départ fait partie des tiles à placer
+    if (tileIndexArray.includes(targetTileIndex)) return;
 
     // --- CAS 1 : Clic sur une zone vide ---
     if (targetTileIndex === undefined) {
@@ -359,9 +362,13 @@ export class EditorMap {
       // On parcourt chaque case de la zone visible
       for (let j = startGridX; j <= endGridX; j++) {
         for (let i = startGridY; i <= endGridY; i++) {
-          // On ne remplit que si la case est effectivement vide
+          // On ne remplit que si la case est effectivement vide ET si la probabilité est respectée
           if (this.getTile(j, i) === undefined) {
-            this.setTile(j, i, newTileIndex);
+            if (Math.random() * 100 <= probability) {
+              // Sélectionner aléatoirement une tile du tableau
+              const randomTileIndex = tileIndexArray[Math.floor(Math.random() * tileIndexArray.length)];
+              this.setTile(j, i, randomTileIndex);
+            }
           }
         }
       }
@@ -373,7 +380,13 @@ export class EditorMap {
 
       while (queue.length > 0) {
         const [x, y] = queue.shift();
-        this.setTile(x, y, newTileIndex);
+        
+        // Appliquer la probabilité pour chaque tile
+        if (Math.random() * 100 <= probability) {
+          // Sélectionner aléatoirement une tile du tableau
+          const randomTileIndex = tileIndexArray[Math.floor(Math.random() * tileIndexArray.length)];
+          this.setTile(x, y, randomTileIndex);
+        }
 
         const neighbors = [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]];
         for (const [nx, ny] of neighbors) {
@@ -390,19 +403,21 @@ export class EditorMap {
     }
   }
 
-  useTool(mouseX, mouseY, tileIndex, camera) {
+  useTool(mouseX, mouseY, tileIndices, camera, fillProbability = 100) {
     const { x, y } = this.getGridCoordinates(mouseX, mouseY, camera);
 
     switch (this.tool) {
       case 'brush':
-        if (tileIndex !== null) this.brush(x, y, tileIndex);
+        // Pour brush, on utilise seulement la première tile sélectionnée
+        const firstTileIndex = Array.isArray(tileIndices) ? tileIndices[0] : tileIndices;
+        if (firstTileIndex !== null) this.brush(x, y, firstTileIndex);
         break;
       case 'erase':
         this.removeTile(x, y);
         break;
       case 'fill':
-        // Pour le remplissage, une tuile doit être sélectionnée
-        if (tileIndex !== null) this.fill(x, y, tileIndex, camera);
+        // Pour le remplissage, des tuiles doivent être sélectionnées
+        if (tileIndices !== null) this.fill(x, y, tileIndices, camera, fillProbability);
         break;
       default:
         break;

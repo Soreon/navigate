@@ -11,6 +11,7 @@ export class TileSelector {
     this.offsetY = 0;
     this.typeZoneManager = typeZoneManager;
     this.currentTool = 'tile'; // 'tile' ou 'typeZone'
+    this.onSelectionChange = null; // Callback pour les changements de sélection
     this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
     this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
     this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
@@ -33,6 +34,9 @@ export class TileSelector {
     if (this.selection.some((el) => el.x === element.x && el.y === element.y)) return;
     this.selection.push(element);
     this.previewSelectedTiles();
+    if (this.onSelectionChange) {
+      this.onSelectionChange();
+    }
   }
 
   handleWheel(e) {
@@ -134,6 +138,10 @@ handleMouseMove(e) {
 
   setOnZoneCreatedCallback(callback) {
     this.onZoneCreated = callback;
+  }
+
+  setOnSelectionChangeCallback(callback) {
+    this.onSelectionChange = callback;
   }
 
   drawGrid(context) {

@@ -99,6 +99,20 @@
             <p style="color: #666; font-style: italic; margin: 0;">No water zones found. Create water zones using the Type Zone tool first.</p>
           </div>
         </div>
+        <div id="fill-panel" class="panel" style="display: none;">
+          <h3>Fill Tool</h3>
+          <div id="fill-probability-container">
+            <label for="fill-probability">Fill Probability: <span id="fill-probability-value">100</span>%</label>
+            <input type="range" id="fill-probability" min="1" max="100" value="100" step="1">
+            <div id="fill-tile-count">
+              <p>Selected tiles: <span id="selected-tile-count">0</span></p>
+            </div>
+            <div id="fill-info">
+              <p>At 100%, fills completely like normal. Lower values create random sparse patterns.</p>
+              <p><strong>Multi-tile selection:</strong> Select multiple tiles to randomly choose from each placement!</p>
+            </div>
+          </div>
+        </div>
         <canvas id="tile-preview"></canvas>
       </div>
 
