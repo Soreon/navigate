@@ -619,6 +619,7 @@ export default class Editor {
     document.querySelector('#undo').addEventListener('click', () => { this.map.undo(); this.draw(); this.renderHistoryPanel(); });
     document.querySelector('#redo').addEventListener('click', () => { this.map.redo(); this.draw(); this.renderHistoryPanel(); });
     document.querySelector('#history').addEventListener('click', () => { this.toggleHistoryPanel(); });
+    document.querySelector('#test-map').addEventListener('click', () => { this.testInGameMode(); });
     document.querySelector('#clear').addEventListener('click', () => {
       this.map.clear();
       this.draw();
@@ -1716,6 +1717,57 @@ export default class Editor {
     
     // Placer la tile sur la carte
     this.map.setTile(gridX, gridY, tileIndex);
+  }
+
+  /**
+   * Exporte et sauvegarde la map pour le mode game
+   */
+  exportMapForGame() {
+    const gameData = this.map.exportForGame();
+    
+    try {
+      localStorage.setItem('gameMap', JSON.stringify(gameData));
+      console.log('Map exported for game mode');
+      console.log('Export size estimation:', JSON.stringify(gameData).length, 'characters');
+      return gameData;
+    } catch (e) {
+      if (e.name === 'QuotaExceededError') {
+        console.error('Map too large for localStorage. Trying to reduce data...');
+        
+        // Essayer avec seulement les layers les plus importants
+        const reducedData = {
+          ...gameData,
+          layers: gameData.layers.slice(0, 3) // Garder seulement les 3 premiers layers
+        };
+        
+        try {
+          localStorage.setItem('gameMap', JSON.stringify(reducedData));
+          console.warn('Exported with reduced layer count');
+          return reducedData;
+        } catch (e2) {
+          console.error('Even reduced map is too large:', e2);
+          alert('Map trop volumineuse pour être exportée. Essayez de réduire le nombre de tiles placées.');
+          return null;
+        }
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Teste la map en mode game
+   */
+  testInGameMode() {
+    console.log('Starting map export for game mode...');
+    
+    // Exporter la map
+    const result = this.exportMapForGame();
+    
+    if (result) {
+      console.log('Export completed, opening game...');
+      // Ouvrir le mode game dans un nouvel onglet
+      window.open('index.html', '_blank');
+    }
   }
 
   /**

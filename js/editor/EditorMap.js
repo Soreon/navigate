@@ -459,4 +459,49 @@ export class EditorMap {
     
     context.translate(0.5, 0.5);
   }
+
+  /**
+   * Exporte la map au format compatible avec le mode game
+   * Sauvegarde les layers structurés pour fusion côté game
+   */
+  exportForGame() {
+    console.log('=== EXPORT DEBUG ===');
+    console.log('Grid size:', this.gridWidth, 'x', this.gridHeight);
+    console.log('Number of layers:', this.layers.length);
+    
+    // Filtrer seulement les layers visibles avec des tiles
+    const exportLayers = [];
+    let totalTiles = 0;
+    
+    for (let layerIndex = 0; layerIndex < this.layers.length; layerIndex++) {
+      const layer = this.layers[layerIndex];
+      
+      // Ignorer les layers invisibles (sauf le background)
+      if (!layer.visible && layerIndex !== 0) continue;
+      
+      const tileCount = Object.keys(layer.tiles).length;
+      if (tileCount > 0) {
+        exportLayers.push({
+          name: layer.name,
+          tiles: layer.tiles,
+          index: layerIndex
+        });
+        totalTiles += tileCount;
+      }
+    }
+    
+    console.log('Layers to export:', exportLayers.length);
+    console.log('Total tiles:', totalTiles);
+    
+    const exportData = {
+      gridWidth: this.gridWidth,
+      gridHeight: this.gridHeight,
+      layers: exportLayers, // Layers structurés au lieu de tiles composites
+      tileSize: this.tileset.tileSize,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('Export completed - lightweight format');
+    return exportData;
+  }
 }

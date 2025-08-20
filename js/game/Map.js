@@ -9,6 +9,8 @@ export default class Map {
     this.gridWidth = widthInTiles;
     this.gridHeight = heightInTiles;
     this.grid = new Uint8Array(this.gridWidth * this.gridHeight);
+    this.editorLayers = null; // Layers depuis l'éditeur
+    this.isFromEditor = false; // Flag pour savoir si on utilise les données éditeur
   }
 
   isWalkable(x, y) {
@@ -20,6 +22,42 @@ export default class Map {
   }
 
   populateGrid() {
+    console.log('=== GAME MAP LOADING DEBUG ===');
+    
+    // Essayer de charger une map depuis l'éditeur
+    const savedGameMap = localStorage.getItem('gameMap');
+    console.log('Raw localStorage data:', savedGameMap ? 'Found' : 'Not found');
+    
+    if (savedGameMap) {
+      try {
+        const gameData = JSON.parse(savedGameMap);
+        console.log('Parsed gameData:', {
+          hasLayers: !!gameData.layers,
+          layerCount: gameData.layers ? gameData.layers.length : 0,
+          timestamp: gameData.timestamp,
+          gridWidth: gameData.gridWidth,
+          gridHeight: gameData.gridHeight
+        });
+        
+        if (gameData.layers && gameData.gridWidth === this.gridWidth && gameData.gridHeight === this.gridHeight) {
+          // Charger les layers depuis l'éditeur
+          this.editorLayers = gameData.layers;
+          this.isFromEditor = true;
+          
+          console.log('✓ Map loaded from editor:', gameData.timestamp);
+          console.log('Layers loaded:', this.editorLayers.length);
+          return;
+        } else {
+          console.warn('Invalid editor data format');
+        }
+      } catch (e) {
+        console.warn('Failed to parse map from editor:', e);
+      }
+    }
+    
+    // Génération procédurale par défaut si pas de map de l'éditeur
+    console.log('Using procedural map generation');
+    this.isFromEditor = false;
     for (let i = 0; i < this.gridHeight; i += 1) {
       for (let j = 0; j < this.gridWidth; j += 1) {
         const index = this.getGridIndex(j, i);
@@ -63,6 +101,31 @@ export default class Map {
   }
 
   draw(context) {
+    if (this.isFromEditor && this.editorLayers) {
+      this.drawEditorLayers(context);
+    } else {
+      this.drawProceduralGrid(context);
+    }
+
+    if (DEBUG) this.drawTileBoundaries(context);
+  }
+
+  drawEditorLayers(context) {
+    // Dessiner layer par layer pour préserver la transparence
+    for (const layer of this.editorLayers) {
+      for (const [tileKey, tileIndex] of Object.entries(layer.tiles)) {
+        const [x, y] = tileKey.split(',').map(coord => parseInt(coord.slice(1)));
+        this.tileset.drawTileOnCanvas(
+          context,
+          x * this.tileset.tileSize,
+          y * this.tileset.tileSize,
+          tileIndex
+        );
+      }
+    }
+  }
+
+  drawProceduralGrid(context) {
     for (let i = 0; i < this.gridHeight; i += 1) {
       for (let j = 0; j < this.gridWidth; j += 1) {
         const gridIndex = this.getGridIndex(j, i);
@@ -70,7 +133,5 @@ export default class Map {
         this.tileset.drawTileOnCanvas(context, j * this.tileset.tileSize, i * this.tileset.tileSize, gridValue);
       }
     }
-
-    if (DEBUG) this.drawTileBoundaries(context);
   }
 }
