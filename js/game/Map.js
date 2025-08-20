@@ -70,44 +70,50 @@ export default class Map {
     return (y * this.gridWidth) + x;
   }
 
-  drawTileBoundaries(context) {
-    // Calculer la taille totale de la carte en pixels
-    const mapPixelWidth = this.gridWidth * this.tileset.tileSize;
-    const mapPixelHeight = this.gridHeight * this.tileset.tileSize;
+  drawTileBoundaries(context, camera) {
+    // Style identique à l'éditeur
+    const { tileSize } = this.tileset;
+    const viewWidth = this.canvas.width;
+    const viewHeight = this.canvas.height;
 
-    context.strokeStyle = 'black';
+    // Calculer seulement les lignes visibles (optimisation comme l'éditeur)
+    const startX = Math.floor(camera.x / tileSize);
+    const endX = startX + Math.ceil(viewWidth / tileSize) + 1;
+    const startY = Math.floor(camera.y / tileSize);
+    const endY = startY + Math.ceil(viewHeight / tileSize) + 1;
+
+    // Style identique à l'éditeur : gris clair avec transparence
+    context.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     context.lineWidth = 1;
-    // décaler la grille d'un demi-pixel pour éviter l'anti-aliasing
-    context.translate(-0.5, -0.5);
+    context.translate(-0.5, -0.5); // Pour des lignes nettes
 
-    // Dessiner les lignes horizontales sur toute la largeur de la carte
-    // Note : On utilise <= pour dessiner aussi la toute dernière ligne
-    for (let i = 0; i <= this.gridHeight; i += 1) {
+    // Dessiner les lignes horizontales visibles
+    for (let i = startY; i <= Math.min(endY, this.gridHeight); i += 1) {
       context.beginPath();
-      context.moveTo(0, i * this.tileset.tileSize);
-      context.lineTo(mapPixelWidth, i * this.tileset.tileSize);
+      context.moveTo(startX * tileSize, i * tileSize);
+      context.lineTo(Math.min(endX, this.gridWidth) * tileSize, i * tileSize);
       context.stroke();
     }
 
-    // Dessiner les lignes verticales sur toute la hauteur de la carte
-    for (let j = 0; j <= this.gridWidth; j += 1) {
+    // Dessiner les lignes verticales visibles
+    for (let j = startX; j <= Math.min(endX, this.gridWidth); j += 1) {
       context.beginPath();
-      context.moveTo(j * this.tileset.tileSize, 0);
-      context.lineTo(j * this.tileset.tileSize, mapPixelHeight);
+      context.moveTo(j * tileSize, startY * tileSize);
+      context.lineTo(j * tileSize, Math.min(endY, this.gridHeight) * tileSize);
       context.stroke();
     }
     
     context.translate(0.5, 0.5);
   }
 
-  draw(context) {
+  draw(context, camera) {
     if (this.isFromEditor && this.editorLayers) {
       this.drawEditorLayers(context);
     } else {
       this.drawProceduralGrid(context);
     }
 
-    if (DEBUG) this.drawTileBoundaries(context);
+    if (DEBUG) this.drawTileBoundaries(context, camera);
   }
 
   drawEditorLayers(context) {

@@ -108,7 +108,7 @@ export default class Game {
     this.context.translate(-this.camera.x, -this.camera.y);
 
     // Ces méthodes dessinent maintenant dans le monde "décalé"
-    this.map.draw(this.context);
+    this.map.draw(this.context, this.camera);
     this.character.draw(this.context);
     
     // Le debug est dessiné par-dessus, sans être affecté par la translation
